@@ -1,0 +1,762 @@
+{
+  "name": "WhatsApp_Campaign_Orchestrator",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0f1ddfa6-8a5a-4d4e-8c1d-1a0f7b8c9d0e",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 10,
+              "unit": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+      "name": "Cron_Check_Telegram",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHANNEL_ID }}",
+        "limit": 10,
+        "filters": {
+          "documents": {
+            "document": true
+          }
+        }
+      },
+      "id": "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q",
+      "name": "Telegram_Get_Messages",
+      "type": "n8n-nodes-base.telegramReceiver",
+      "typeVersion": 1,
+      "position": [
+        450,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": {
+            "value1": "={{ $json.document !== undefined }}",
+            "operation": "equal",
+            "value2": "={{ true }}"
+          }
+        }
+      },
+      "id": "3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r",
+      "name": "Filter_CSV_Messages",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        650,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "fileId": "={{ $json.document.file_id }}",
+        "fileName": "={{ $json.document.file_name }}"
+      },
+      "id": "4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+      "name": "Telegram_Download_CSV",
+      "type": "n8n-nodes-base.telegramDownloadFile",
+      "typeVersion": 1,
+      "position": [
+        850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t",
+      "name": "CSV_Parse",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "business_name",
+              "value": "={{ $json['Business name'] || $json['Business Name'] || $json['business name'] || $json.business_name }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json['Email'] || $json['email'] }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json['Phone number'] || $json['Phone Number'] || $json['phone number'] || $json.phone_number || $json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6f7g8h9i-0j1k-2l3m-4n5o-6p7q8r9s0t1u",
+      "name": "Set_Normalized_Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const phone = $json.phone.toString().replace(/\\D/g, '');\n\nlet normalizedPhone = null;\n\nif (phone.length === 10) {\n  normalizedPhone = '91' + phone;\n} else if (phone.startsWith('91') && phone.length === 12) {\n  normalizedPhone = phone;\n}\n\nif (normalizedPhone) {\n  return [{\n    json: {\n      ...$json,\n      phone: normalizedPhone\n    }\n  }];\n} else {\n  return [];\n}"
+      },
+      "id": "7g8h9i0j-1k2l-3m4n-5o6p-7q8r9s0t1u2v",
+      "name": "Normalize_Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sent_numbers?phone=eq.{{ $json.phone }}",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}"
+        },
+        "options": {}
+      },
+      "id": "8h9i0j1k-2l3m-4n5o-6p7q-8r9s0t1u2v3w",
+      "name": "Check_Existing_Number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "exists",
+              "value": "={{ $json.length > 0 ? \"true\" : \"false\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9i0j1k2l-3m4n-5o6p-7q8r-9s0t1u2v3w4x",
+      "name": "Set_Exists_Flag",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": {
+            "value1": "={{ $json.exists }}",
+            "operation": "equal",
+            "value2": "false"
+          }
+        }
+      },
+      "id": "0j1k2l3m-4n5o-6p7q-8r9s-0t1u2v3w4x5y",
+      "name": "Filter_New_Numbers",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        2050,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sent_numbers",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}",
+          "Prefer": "return=representation"
+        },
+        "bodyContentType": "raw",
+        "rawBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"business_name\": \"{{ $json.business_name }}\",\n  \"email\": \"{{ $json.email }}\",\n  \"initial_sent_batch\": \"batch_{{ new Date().toISOString().slice(0, 10).replace(/-/g, '') }}\"\n}",
+        "options": {}
+      },
+      "id": "1k2l3m4n-5o6p-7q8r-9s0t-1u2v3w4x5y6z",
+      "name": "Insert_Sent_Number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        2250,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/batches",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}",
+          "Prefer": "return=representation"
+        },
+        "bodyContentType": "raw",
+        "rawBody": "={\n  \"id\": \"batch_{{ new Date().toISOString().slice(0, 10).replace(/-/g, '') }}\",\n  \"csv_filename\": \"{{ $('Telegram_Download_CSV').first().json.document.file_name }}\",\n  \"processed_count\": {{ $('CSV_Parse').last().json.rows.length }}\n}",
+        "options": {}
+      },
+      "id": "2l3m4n5o-6p7q-8r9s-0t1u-2v3w4x5y6z7a",
+      "name": "Insert_Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        2450,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 4,
+              "minute": 30
+            }
+          ]
+        }
+      },
+      "id": "3m4n5o6p-7q8r-9s0t-1u2v-3w4x5y6z7a8b",
+      "name": "Cron_Daily_Send",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sent_numbers?initial_sent_batch=eq.batch_{{ new Date().toISOString().slice(0, 10).replace(/-/g, '') }}&first_sent_at=is.null",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}"
+        },
+        "options": {}
+      },
+      "id": "4n5o6p7q-8r9s-0t1u-2v3w-4x5y6z7a8b9c",
+      "name": "Get_Unsent_Numbers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        450,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": {
+            "value1": "={{ $json.phone !== undefined && $json.phone !== null }}",
+            "operation": "equal",
+            "value2": "={{ true }}"
+          }
+        }
+      },
+      "id": "5o6p7q8r-9s0t-1u2v-3w4x-5y6z7a8b9c0d",
+      "name": "Filter_Valid_Unsent",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        650,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WHATSAPP_WORKER_ENDPOINT }}/send",
+        "bodyContentType": "raw",
+        "rawBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"name\": \"{{ $json.business_name }}\",\n  \"batch_id\": \"{{ $json.initial_sent_batch }}\",\n  \"job_type\": \"initial\"\n}",
+        "options": {}
+      },
+      "id": "6p7q8r9s-0t1u-2v3w-4x5y-6z7a8b9c0d1e",
+      "name": "Send_to_Worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        }
+      },
+      "id": "7q8r9s0t-1u2v-3w4x-5y6z-7a8b9c0d1e2f",
+      "name": "Cron_Followup_Scheduler",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sent_numbers?first_sent_at=lte.{{ new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() }}&replied=is.false&followup_sent=is.false",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}"
+        },
+        "options": {}
+      },
+      "id": "8r9s0t1u-2v3w-4x5y-6z7a-8b9c0d1e2f3g",
+      "name": "Get_Followup_Candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": {
+            "value1": "={{ $json.phone !== undefined && $json.phone !== null }}",
+            "operation": "equal",
+            "value2": "={{ true }}"
+          }
+        }
+      },
+      "id": "9s0t1u2v-3w4x-5y6z-7a8b-9c0d1e2f3g4h",
+      "name": "Filter_Eligible_For_Followup",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        650,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WHATSAPP_WORKER_ENDPOINT }}/send",
+        "bodyContentType": "raw",
+        "rawBody": "={\n  \"phone\": \"{{ $json.phone }}\",\n  \"name\": \"{{ $json.business_name }}\",\n  \"batch_id\": \"{{ $json.initial_sent_batch }}\",\n  \"job_type\": \"followup\"\n}",
+        "options": {}
+      },
+      "id": "0t1u2v3w-4x5y-6z7a-8b9c-0d1e2f3g4h5i",
+      "name": "Send_Followup_to_Worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 4,
+              "minute": 35
+            }
+          ]
+        }
+      },
+      "id": "1u2v3w4x-5y6z-7a8b-9c0d-1e2f3g4h5i6j",
+      "name": "Cron_Admin_Report",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        250,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/sent_numbers",
+        "headers": {
+          "apiKey": "={{ $env.SUPABASE_KEY }}",
+          "Authorization": "={{ \"Bearer \" + $env.SUPABASE_KEY }}"
+        },
+        "options": {}
+      },
+      "id": "2v3w4x5y-6z7a-8b9c-0d1e-2f3g4h5i6j7k",
+      "name": "Get_All_Numbers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        450,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const numbers = $input.all();\n\nlet total_new = numbers.length;\nlet sent = 0;\nlet failed = [];\nlet replies = [];\nlet followups_sent = 0;\nlet duplicates_skipped = 0;\nlet status = 'running';\n\nnumbers.forEach(item => {\n  const num = item.json;\n  \n  if (num.first_sent_at) sent++;\n  if (num.send_error) failed.push(`${num.phone}:${num.send_error}`);\n  if (num.replied) replies.push(`${num.phone}:${num.business_name}`);\n  if (num.followup_sent) followups_sent++;\n});\n\nconst report = `📊 WhatsApp Campaign Report\\nTotal New Numbers: ${total_new}\\nMessages Sent: ${sent}\\nFailed Sends: ${failed.join(', ') || 'None'}\\nReplies Received: ${replies.join(', ') || 'None'}\\nFollow-ups Sent: ${followups_sent}\\nDuplicates Skipped: ${duplicates_skipped}\\nStatus: ${status}`;\n\nreturn [{ json: { report } }];"
+      },
+      "id": "3w4x5y6z-7a8b-9c0d-1e2f-3g4h5i6j7k8l",
+      "name": "Generate_Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        650,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.ADMIN_TELEGRAM_ID }}",
+        "text": "={{ $json.report }}",
+        "options": {}
+      },
+      "id": "4x5y6z7a-8b9c-0d1e-2f3g-4h5i6j7k8l9m",
+      "name": "Send_Admin_Report",
+      "type": "n8n-nodes-base.telegramSender",
+      "typeVersion": 1,
+      "position": [
+        850,
+        750
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5y6z7a8b-9c0d-1e2f-3g4h-5i6j7k8l9m0n",
+      "name": "Manual_Trigger_Prepare",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        900
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6z7a8b9c-0d1e-2f3g-4h5i-6j7k8l9m0n1o",
+      "name": "Manual_Trigger_Send_Initial",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        1050
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7a8b9c0d-1e2f-3g4h-5i6j-7k8l9m0n1o2p",
+      "name": "Manual_Trigger_Send_Followups",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        1200
+      ]
+    }
+  ],
+  "connections": {
+    "Cron_Check_Telegram": {
+      "main": [
+        [
+          {
+            "node": "Telegram_Get_Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram_Get_Messages": {
+      "main": [
+        [
+          {
+            "node": "Filter_CSV_Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter_CSV_Messages": {
+      "main": [
+        [
+          {
+            "node": "Telegram_Download_CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram_Download_CSV": {
+      "main": [
+        [
+          {
+            "node": "CSV_Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CSV_Parse": {
+      "main": [
+        [
+          {
+            "node": "Set_Normalized_Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set_Normalized_Fields": {
+      "main": [
+        [
+          {
+            "node": "Normalize_Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_Phone": {
+      "main": [
+        [
+          {
+            "node": "Check_Existing_Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Existing_Number": {
+      "main": [
+        [
+          {
+            "node": "Set_Exists_Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set_Exists_Flag": {
+      "main": [
+        [
+          {
+            "node": "Filter_New_Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter_New_Numbers": {
+      "main": [
+        [
+          {
+            "node": "Insert_Sent_Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert_Sent_Number": {
+      "main": [
+        [
+          {
+            "node": "Insert_Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron_Daily_Send": {
+      "main": [
+        [
+          {
+            "node": "Get_Unsent_Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_Unsent_Numbers": {
+      "main": [
+        [
+          {
+            "node": "Filter_Valid_Unsent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter_Valid_Unsent": {
+      "main": [
+        [
+          {
+            "node": "Send_to_Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron_Followup_Scheduler": {
+      "main": [
+        [
+          {
+            "node": "Get_Followup_Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_Followup_Candidates": {
+      "main": [
+        [
+          {
+            "node": "Filter_Eligible_For_Followup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter_Eligible_For_Followup": {
+      "main": [
+        [
+          {
+            "node": "Send_Followup_to_Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron_Admin_Report": {
+      "main": [
+        [
+          {
+            "node": "Get_All_Numbers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_All_Numbers": {
+      "main": [
+        [
+          {
+            "node": "Generate_Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate_Report": {
+      "main": [
+        [
+          {
+            "node": "Send_Admin_Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual_Trigger_Prepare": {
+      "main": [
+        [
+          {
+            "node": "Cron_Check_Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual_Trigger_Send_Initial": {
+      "main": [
+        [
+          {
+            "node": "Cron_Daily_Send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual_Trigger_Send_Followups": {
+      "main": [
+        [
+          {
+            "node": "Cron_Followup_Scheduler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6a7b8c9d-0e1f-2g3h-4i5j-6k7l8m9n0o1p"
+}

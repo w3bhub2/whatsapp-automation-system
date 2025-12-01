@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+      - ./whatsapp_campaign.json:/whatsapp_campaign.json
+      - ./auto_import_n8n.py:/auto_import_n8n.py
+    environment:
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_DISABLED=true
+
+  whatsapp-worker:
+    build: .
+    container_name: whatsapp-worker
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chrome-profile:/chrome-profile
+      - ./health_monitor.py:/health_monitor.py
+      - ./whatsapp_manager.py:/whatsapp_manager.py
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
+      - WHATSAPP_WORKER_ENDPOINT=http://whatsapp-worker:8000
+      - UPTIME_PING_SECRET=${UPTIME_PING_SECRET}
