@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""
+Deployment script for WhatsApp Automation System to Render
+"""
+
+import os
+import json
+import time
+from pathlib import Path
+
+def create_render_blueprint():
+    """Create Render blueprint for deployment"""
+    blueprint = {
+        "version": "1",
+        "services": [
+            {
+                "type": "web",
+                "name": "whatsapp-worker",
+                "env": "docker",
+                "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",  # Replace with your repo
+                "region": "oregon",
+                "plan": "free",
+                "envVars": [
+                    {"key": "TELEGRAM_BOT_TOKEN", "sync": False},
+                    {"key": "TELEGRAM_CHANNEL_ID", "sync": False},
+                    {"key": "SUPABASE_URL", "sync": False},
+                    {"key": "SUPABASE_KEY", "sync": False},
+                    {"key": "ADMIN_TELEGRAM_ID", "sync": False},
+                    {"key": "UPTIME_PING_SECRET", "sync": False}
+                ],
+                "healthCheckPath": "/health",
+                "disk": {
+                    "name": "chrome-profile",
+                    "mountPath": "/chrome-profile",
+                    "sizeGB": 1
+                }
+            },
+            {
+                "type": "web",
+                "name": "n8n",
+                "env": "docker",
+                "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",  # Replace with your repo
+                "region": "oregon",
+                "plan": "free",
+                "envVars": [
+                    {"key": "GENERIC_TIMEZONE", "value": "Asia/Kolkata"},
+                    {"key": "TZ", "value": "Asia/Kolkata"}
+                ],
+                "healthCheckPath": "/healthz",
+                "disk": {
+                    "name": "n8n-data",
+                    "mountPath": "/home/node/.n8n",
+                    "sizeGB": 1
+                }
+            }
+        ]
+    }
+    
+    with open("render.yaml", "w") as f:
+        json.dump(blueprint, f, indent=2)
+    
+    print("✅ Render blueprint created: render.yaml")
+    return blueprint
+
+def create_deployment_instructions():
+    """Create detailed deployment instructions"""
+    instructions = """# WhatsApp Automation System Deployment to Render
+
+## Prerequisites
+1. GitHub account
+2. Render account (https://render.com)
+3. Supabase account (https://supabase.com)
+4. Telegram bot token and channel
+
+## Step 1: Push to GitHub
+1. Create a new repository on GitHub
+2. Run these commands:
+   ```bash
+   git remote set-url origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+   git push -u origin main
+   ```
+
+## Step 2: Deploy to Render
+1. Go to https://dashboard.render.com/select-repo?type=blueprint
+2. Select your GitHub repository
+3. Select the render.yaml file
+4. Configure environment variables:
+   - TELEGRAM_BOT_TOKEN: Your Telegram bot token
+   - TELEGRAM_CHANNEL_ID: Your Telegram channel ID
+   - SUPABASE_URL: Your Supabase project URL
+   - SUPABASE_KEY: Your Supabase service key
+   - ADMIN_TELEGRAM_ID: Your admin Telegram ID
+   - UPTIME_PING_SECRET: Your uptime ping secret (optional)
+
+## Step 3: Scan WhatsApp QR Code
+1. After deployment, access the WhatsApp worker shell:
+   ```bash
+   render ssh whatsapp-worker
+   ```
+2. Run the QR code generator:
+   ```bash
+   python -c "from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()"
+   ```
+3. Scan the QR code with your phone
+4. Press Enter to continue
+
+## Step 4: Verify Deployment
+1. Check service statuses on Render dashboard
+2. Verify health endpoints:
+   - WhatsApp Worker: https://YOUR-WORKER-URL.onrender.com/health
+   - n8n: https://YOUR-N8N-URL.onrender.com/healthz
+
+## Step 5: Test the System
+1. Upload a CSV file to your Telegram channel
+2. Wait 10 minutes for processing
+3. Check Supabase for new records
+4. Verify messages send between 9 AM - 6 PM IST
+
+## Autonomous Operation
+After initial setup, the system runs completely autonomously:
+- No laptop dependency
+- No manual intervention required
+- Self-healing containers
+- Automatic updates via GitHub
+"""
+    
+    with open("DEPLOYMENT_INSTRUCTIONS.md", "w") as f:
+        f.write(instructions)
+    
+    print("✅ Deployment instructions created: DEPLOYMENT_INSTRUCTIONS.md")
+
+def main():
+    """Main deployment function"""
+    print("🚀 Creating deployment files for WhatsApp Automation System...")
+    
+    # Create Render blueprint
+    create_render_blueprint()
+    
+    # Create deployment instructions
+    create_deployment_instructions()
+    
+    print("\n✅ All deployment files created successfully!")
+    print("\n📝 Next steps:")
+    print("1. Push to GitHub:")
+    print("   git remote set-url origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git")
+    print("   git push -u origin main")
+    print("\n2. Deploy to Render using the render.yaml file")
+    print("3. Follow DEPLOYMENT_INSTRUCTIONS.md for complete setup")
+    
+    return True
+
+if __name__ == "__main__":
+    success = main()
+    exit(0 if success else 1)

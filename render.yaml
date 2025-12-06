@@ -1,0 +1,69 @@
+{
+  "version": "1",
+  "services": [
+    {
+      "type": "web",
+      "name": "whatsapp-worker",
+      "env": "docker",
+      "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",
+      "region": "oregon",
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "TELEGRAM_BOT_TOKEN",
+          "sync": false
+        },
+        {
+          "key": "TELEGRAM_CHANNEL_ID",
+          "sync": false
+        },
+        {
+          "key": "SUPABASE_URL",
+          "sync": false
+        },
+        {
+          "key": "SUPABASE_KEY",
+          "sync": false
+        },
+        {
+          "key": "ADMIN_TELEGRAM_ID",
+          "sync": false
+        },
+        {
+          "key": "UPTIME_PING_SECRET",
+          "sync": false
+        }
+      ],
+      "healthCheckPath": "/health",
+      "disk": {
+        "name": "chrome-profile",
+        "mountPath": "/chrome-profile",
+        "sizeGB": 1
+      }
+    },
+    {
+      "type": "web",
+      "name": "n8n",
+      "env": "docker",
+      "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",
+      "region": "oregon",
+      "plan": "free",
+      "envVars": [
+        {
+          "key": "GENERIC_TIMEZONE",
+          "value": "Asia/Kolkata"
+        },
+        {
+          "key": "TZ",
+          "value": "Asia/Kolkata"
+        }
+      ],
+      "healthCheckPath": "/healthz",
+      "disk": {
+        "name": "n8n-data",
+        "mountPath": "/home/node/.n8n",
+        "sizeGB": 1
+      }
+    }
+  ]
+}
