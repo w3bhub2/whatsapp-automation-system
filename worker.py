@@ -194,11 +194,15 @@ def init_webdriver():
     chrome_options.add_argument("--safebrowsing-disable-auto-update")
     chrome_options.add_argument("--disable-logging")
     chrome_options.add_argument("--disable-crash-reporter")
-    chrome_options.add_argument("--single-process")
     chrome_options.add_argument("--disable-hang-monitor")
     chrome_options.add_argument("--disable-background-timer-throttling")
     chrome_options.add_argument("--disable-browser-side-navigation")
     chrome_options.add_argument("--disable-dev-tools")
+    
+    # Additional stability options for Docker
+    chrome_options.add_argument("--memory-pressure-off")
+    chrome_options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
+    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
     
     try:
         driver = webdriver.Chrome(options=chrome_options)
