@@ -92,14 +92,11 @@ def get_daily_limit():
         return 600
 
 def is_within_send_window():
-    """Check if current time is within send window (TEMPORARILY DISABLED FOR TESTING)"""
-    # For testing purposes, always return True
-    # In production, uncomment the lines below:
+    """Check if current time is within send window (9 AM - 6 PM IST)"""
     # Convert current UTC time to IST (UTC+5:30)
-    # ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
-    # hour = ist_time.hour
-    # return 9 <= hour < 18
-    return True
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    hour = ist_time.hour
+    return 9 <= hour < 18
 
 def reset_daily_count_if_needed():
     """Reset daily count if it's a new day"""
