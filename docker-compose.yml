@@ -10,7 +10,6 @@ services:
     volumes:
       - ./n8n_data:/home/node/.n8n
       - ./whatsapp_campaign.json:/whatsapp_campaign.json
-      - ./auto_import_n8n.py:/auto_import_n8n.py
     environment:
       - GENERIC_TIMEZONE=Asia/Kolkata
       - TZ=Asia/Kolkata
@@ -26,8 +25,6 @@ services:
       - "8000:8000"
     volumes:
       - ./chrome-profile:/chrome-profile
-      - ./health_monitor.py:/health_monitor.py
-      - ./whatsapp_manager.py:/whatsapp_manager.py
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID}

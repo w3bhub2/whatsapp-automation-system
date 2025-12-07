@@ -37,8 +37,6 @@ ENV DISPLAY=:99
 
 # Copy application code
 COPY worker.py .
-COPY health_monitor.py .
-COPY auto_import_n8n.py .
 COPY whatsapp_manager.py .
 
 # Expose port
