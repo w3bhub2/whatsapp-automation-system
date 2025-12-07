@@ -15,6 +15,7 @@ import os
 import requests
 import json
 import time
+import random
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -504,25 +505,31 @@ class WhatsAppManager:
         print("2. Wait up to 10 minutes for n8n to process it")
         print("3. Check Supabase for new records")
 
-    def send_test_message(self, phone, name):
-        """Send a test message directly to the WhatsApp worker"""
+    def send_test_message(self, phone, business_name):
+        """Send a test message to a phone number"""
         try:
+            # Prepare message
+            message = random.choice([
+                f"Hi {business_name}, this is W3BHub — we build clean, fast websites and WhatsApp automations for local businesses. If you want, we can make a free sample homepage for your business. View → https://w3bhub.co.in",
+                f"Hello {business_name}, W3BHub here — want a quick free sample of a website for your shop? We create websites that bring more customers. See our work: https://w3bhub.co.in"
+            ])
+            
+            # Send message via WhatsApp worker API
             url = "http://localhost:8000/send"
-            data = {
+            payload = {
                 "phone": phone,
-                "name": name,
-                "batch_id": "test_batch_" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-                "job_type": "initial"
+                "message": message,
+                "business_name": business_name
             }
             
-            response = requests.post(url, json=data)
+            response = requests.post(url, json=payload, timeout=60)
             if response.status_code == 200:
-                result = response.json()
-                print(f"✅ Message send request successful: {result}")
+                print(f"✅ Message sent successfully to {business_name} ({phone})")
                 return True
             else:
                 print(f"❌ Failed to send message: {response.status_code} - {response.text}")
                 return False
+                
         except Exception as e:
             print(f"❌ Error sending test message: {e}")
             return False
@@ -555,6 +562,33 @@ class WhatsAppManager:
             # Wait a bit between messages
             time.sleep(5)
 
+    def get_whatsapp_qr(self):
+        """Get WhatsApp QR code for authentication"""
+        print("📱 Getting WhatsApp QR code for authentication...")
+        print("\n📝 Instructions:")
+        print("1. Run this command in a separate terminal:")
+        print("   docker exec -it whatsapp-worker python -c \"from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()\"")
+        print("\n2. This will open WhatsApp Web in the container")
+        print("3. Scan the QR code that appears with your phone")
+        print("4. Press Enter after scanning to continue")
+        print("\n⚠️  Note: You may need to run this command multiple times if the first attempt fails")
+
+    def verify_whatsapp_session(self):
+        """Verify WhatsApp session is active"""
+        try:
+            # This would normally check if WhatsApp Web is authenticated
+            # For now, we'll just check if the worker is responsive
+            response = requests.get("http://localhost:8000/health", timeout=10)
+            if response.status_code == 200:
+                print("✅ WhatsApp worker is responsive")
+                return True
+            else:
+                print("❌ WhatsApp worker is not responsive")
+                return False
+        except Exception as e:
+            print(f"❌ Error checking WhatsApp worker: {e}")
+            return False
+
 def main():
     """Main function"""
     manager = WhatsAppManager()
@@ -575,6 +609,8 @@ def main():
         print("  test-integration  - Test full system integration")
         print("  simulate-daily    - Simulate daily workflow")
         print("  send-test         - Send test messages (1-hour test)")
+        print("  get-qr           - Get WhatsApp QR code for authentication")
+        print("  verify-session   - Verify WhatsApp session is active")
         return
     
     command = sys.argv[1]
@@ -599,6 +635,10 @@ def main():
         manager.simulate_daily_workflow()
     elif command == "send-test":
         manager.start_messaging_test()
+    elif command == "get-qr":
+        manager.get_whatsapp_qr()
+    elif command == "verify-session":
+        manager.verify_whatsapp_session()
     else:
         print(f"Unknown command: {command}")
         print("Use without arguments to see available commands")

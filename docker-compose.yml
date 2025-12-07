@@ -16,6 +16,7 @@ services:
       - TZ=Asia/Kolkata
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_API_KEY=supersecretkey
 
   whatsapp-worker:
     build: .

@@ -1,21 +1,37 @@
+#!/usr/bin/env python3
+"""
+WhatsApp Web Automation Worker
+
+Flask-based worker that handles WhatsApp Web automation using Selenium
+"""
+
 import os
 import time
 import json
 import random
+import urllib.parse
 import logging
 from datetime import datetime, timedelta
-import re
-from flask import Flask, request, jsonify
+from threading import Thread, Lock
+from dotenv import load_dotenv
+
+# Import Selenium
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-import undetected_chromedriver as uc
+from selenium.webdriver.chrome.service import Service
+
+# Import Flask
+from flask import Flask, request, jsonify
+
+# Import requests for Supabase
 import requests
-from threading import Thread, Lock
-import urllib.parse
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -33,13 +49,23 @@ SEND_LOCK = Lock()
 FAILURE_COUNT = 0
 BLOCK_COUNT = 0
 
+# Global variables for WebDriver and reply detection
+driver = None
+driver_lock = Lock()  # Thread lock for driver access
+REPLY_DETECTION_ACTIVE = False
+
 # Message templates
 INITIAL_TEMPLATES = [
     "Hi {name}, this is W3BHub — we build clean, fast websites and WhatsApp automations for local businesses. If you want, we can make a free sample homepage for your business. View → https://w3bhub.co.in",
     "Hello {name}, W3BHub here — want a quick free sample of a website for your shop? We create websites that bring more customers. See our work: https://w3bhub.co.in",
     "Hey {name}, we help small businesses go online fast with simple websites + automation. Can I send a free sample homepage for your business? https://w3bhub.co.in",
     "Hi {name}, W3BHub — we build affordable websites & WhatsApp automations that get results. If you'd like, we can create a free sample homepage for your business. https://w3bhub.co.in",
-    "🙂 Hi {name}, quick note from W3BHub — we design fast websites and setup automation to get customers. Want a free sample homepage? https://w3bhub.co.in"
+    "🙂 Hi {name}, quick note from W3BHub — we design fast websites and setup automation to get customers. Want a free sample homepage? https://w3bhub.co.in",
+    "Greetings {name}! 👋 W3BHub here - we specialize in creating high-converting websites for local businesses like yours. Would you be interested in a complimentary homepage sample? Check it out: https://w3bhub.co.in",
+    "Dear {name}, this is W3BHub calling - we've helped hundreds of businesses increase their online presence with our custom website solutions. Want to see what we can do for you? Free sample: https://w3bhub.co.in",
+    "🌟 {name}, your business deserves a professional online presence! W3BHub offers tailored website solutions with free samples. Interested? Visit: https://w3bhub.co.in",
+    "Quick question {name} - does your business have a website that converts visitors to customers? W3BHub can help with a free sample. Details: https://w3bhub.co.in",
+    "🤝 Hi {name}! W3BHub here - we're experts in local business websites & WhatsApp marketing automation. Free homepage sample available at: https://w3bhub.co.in"
 ]
 
 FOLLOWUP_TEMPLATE = "Hi {name}, quick follow-up from W3BHub — we can build a free sample website for your business. If interested, reply and I'll send the sample. https://w3bhub.co.in"
@@ -131,27 +157,121 @@ def get_supabase_record(phone):
         return None
 
 def init_webdriver():
-    """Initialize Chrome WebDriver with persistent profile"""
-    chrome_options = uc.ChromeOptions()
+    """Initialize Chrome WebDriver with enhanced anti-detection features"""
+    chrome_options = Options()
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("--user-data-dir=/chrome-profile")  # Persistent profile
-    # Remove all experimental options that might cause issues
-    # chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    # chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-plugins")
+    chrome_options.add_argument("--disable-images")
+    chrome_options.add_argument("--disable-javascript")  # Enable JavaScript after loading
+    chrome_options.add_argument("--disable-popup-blocking")
+    chrome_options.add_argument("--disable-background-timer-throttling")
+    chrome_options.add_argument("--disable-renderer-backgrounding")
+    chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-infobars")
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--disable-web-security")
+    chrome_options.add_argument("--allow-running-insecure-content")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--start-maximized")
+    
+    # Additional options for Docker environment
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-application-cache")
+    chrome_options.add_argument("--disable-extensions-http-throttling")
+    chrome_options.add_argument("--disable-features=TranslateUI")
+    chrome_options.add_argument("--disable-ipc-flooding-protection")
+    chrome_options.add_argument("--disable-background-networking")
+    chrome_options.add_argument("--disable-default-apps")
+    chrome_options.add_argument("--disable-breakpad")
+    chrome_options.add_argument("--disable-component-update")
+    chrome_options.add_argument("--disable-domain-reliability")
+    chrome_options.add_argument("--disable-sync")
+    chrome_options.add_argument("--metrics-recording-only")
+    chrome_options.add_argument("--no-first-run")
+    chrome_options.add_argument("--safebrowsing-disable-auto-update")
+    chrome_options.add_argument("--disable-logging")
+    chrome_options.add_argument("--disable-crash-reporter")
+    chrome_options.add_argument("--single-process")
+    chrome_options.add_argument("--disable-hang-monitor")
+    chrome_options.add_argument("--disable-background-timer-throttling")
+    chrome_options.add_argument("--disable-browser-side-navigation")
+    chrome_options.add_argument("--disable-dev-tools")
     
     try:
-        driver = uc.Chrome(options=chrome_options)
-        # Remove the javascript execution that might cause issues
-        # driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        driver = webdriver.Chrome(options=chrome_options)
+        # Remove automation indicators
+        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+                
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['en-US', 'en']
+                });
+                
+                window.chrome = {
+                    runtime: {}
+                };
+                
+                Object.defineProperty(navigator, 'permissions', {
+                    get: () => ({
+                        query: Promise.resolve.bind(Promise)
+                    })
+                });
+                
+                // Hide webdriver property
+                delete navigator.__proto__.webdriver;
+            """
+        })
         return driver
     except Exception as e:
         logger.error(f"Failed to initialize Chrome driver: {e}")
         return None
 
-def send_whatsapp_message(driver, phone, message):
-    """Send WhatsApp message using Selenium"""
+def get_driver():
+    """Get or create a singleton WebDriver instance"""
+    global driver, driver_lock
+    
+    with driver_lock:
+        if driver is None:
+            logger.info("Initializing new Chrome driver...")
+            driver = init_webdriver()
+            if driver is None:
+                logger.error("Failed to initialize Chrome driver")
+                return None
+            logger.info("Chrome driver initialized successfully")
+        else:
+            # Check if driver is still alive
+            try:
+                driver.current_url  # This will throw an exception if driver is dead
+                logger.debug("Using existing Chrome driver")
+            except:
+                logger.info("Reinitializing Chrome driver...")
+                try:
+                    driver.quit()
+                except:
+                    pass
+                driver = init_webdriver()
+                if driver is None:
+                    logger.error("Failed to reinitialize Chrome driver")
+                    return None
+                logger.info("Chrome driver reinitialized successfully")
+        
+        return driver
+
+def send_whatsapp_message(phone, message):
+    """Send WhatsApp message using Selenium with human-like behavior"""
     global DAILY_SENT_COUNT, FAILURE_COUNT, BLOCK_COUNT
     
     # Check safety triggers
@@ -168,19 +288,35 @@ def send_whatsapp_message(driver, phone, message):
         STOP_SENDING = True
         return "high_failure_rate"
     
+    # Get or create WebDriver instance
+    driver = get_driver()
+    if driver is None:
+        logger.error("Failed to get WebDriver instance")
+        FAILURE_COUNT += 1
+        return "driver_error"
+    
     try:
+        # Enable JavaScript for this session
+        driver.execute_cdp_cmd("Emulation.setScriptExecutionDisabled", {"value": False})
+        
         # Open WhatsApp Web with the phone number
         encoded_message = urllib.parse.quote(message)
         url = f"https://web.whatsapp.com/send?phone={phone}&text={encoded_message}"
         driver.get(url)
         
+        # Human-like waiting with random variations
+        time.sleep(random.uniform(3, 6))
+        
         # Wait for the message input field to be ready
         wait = WebDriverWait(driver, 30)
         message_box = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')))
         
+        # Simulate human typing behavior
+        time.sleep(random.uniform(1, 3))
+        
         # Check for limit/suspicious activity alerts
         try:
-            alert = driver.find_element(By.XPATH, '//div[contains(text(), "too many requests") or contains(text(), "suspicious") or contains(text(), "blocked")]')
+            alert = driver.find_element(By.XPATH, '//div[contains(text(), "too many requests") or contains(text(), "suspicious") or contains(text(), "blocked") or contains(text(), "Wait a moment")]')
             if alert:
                 logger.warning("WhatsApp limit/suspicious activity detected")
                 send_telegram_message(ADMIN_TELEGRAM_ID, f"🚨 WhatsApp limit/suspicious activity detected for {phone}")
@@ -189,8 +325,10 @@ def send_whatsapp_message(driver, phone, message):
         except NoSuchElementException:
             pass
         
-        # Send the message by pressing Enter
-        message_box.send_keys("\n")
+        # Simulate typing with random delays
+        for char in "\n":  # Just press enter to send pre-filled message
+            time.sleep(random.uniform(0.1, 0.3))
+            message_box.send_keys(char)
         
         # Wait for confirmation that message was sent
         wait.until(EC.presence_of_element_located((By.XPATH, '//span[@data-icon="msg-time" or @data-icon="check"]')))
@@ -211,64 +349,73 @@ def send_whatsapp_message(driver, phone, message):
         FAILURE_COUNT += 1
         return "error"
 
-def detect_replies(driver):
-    """Detect replies in WhatsApp Web"""
-    try:
-        # Look for unread messages
-        unread_chats = driver.find_elements(By.XPATH, '//div[@role="row"]//span[@aria-label="Unread message"]')
-        
-        for chat in unread_chats:
-            # Click on the chat to open it
-            chat.click()
-            time.sleep(2)
+def detect_replies():
+    """Detect replies in WhatsApp Web (runs in background thread)"""
+    global driver, REPLY_DETECTION_ACTIVE
+    logger.info("Starting reply detection loop...")
+    
+    while REPLY_DETECTION_ACTIVE:
+        try:
+            # Initialize driver if not already done
+            if driver is None:
+                logger.info("Initializing driver for reply detection...")
+                driver = init_webdriver()
+                if driver is None:
+                    logger.error("Failed to initialize Chrome driver for reply detection")
+                    time.sleep(60)  # Wait longer before retrying
+                    continue
+                    
+                # Navigate to WhatsApp Web if not already there
+                try:
+                    if driver.current_url != "https://web.whatsapp.com":
+                        driver.get("https://web.whatsapp.com")
+                        time.sleep(5)  # Wait for page to load
+                except:
+                    # If we can't navigate, try to recover
+                    try:
+                        driver.get("https://web.whatsapp.com")
+                        time.sleep(5)
+                    except Exception as e:
+                        logger.error(f"Failed to navigate to WhatsApp Web: {e}")
+                        time.sleep(60)  # Wait longer before retrying
+                        continue
             
-            # Get the phone number from the chat header
-            try:
-                header = driver.find_element(By.XPATH, '//header//span[@dir="auto"]')
-                contact_name = header.text
-                
-                # Extract phone number from the URL or page
-                current_url = driver.current_url
-                phone_match = re.search(r'/send\?phone=(\d+)', current_url)
-                if phone_match:
-                    phone = phone_match.group(1)
+            # Check for new messages
+            unread_chats = driver.find_elements(By.XPATH, '//div[@role="row"]//span[@aria-label="Unread"]')
+            for chat in unread_chats:
+                try:
+                    # Click on the chat to open it
+                    parent_chat = chat.find_element(By.XPATH, './ancestor::div[@role="row"]')
+                    parent_chat.click()
+                    time.sleep(2)
                     
-                    # Check messages for opt-out keywords
-                    messages = driver.find_elements(By.XPATH, '//div[@data-id]//span[@dir="ltr"]')
-                    opt_out_detected = False
-                    latest_message = ""
+                    # Get chat name/phone
+                    try:
+                        chat_header = driver.find_element(By.XPATH, '//div[@id="main"]//header//div[@data-testid="conversation-info-header"]')
+                        chat_name = chat_header.text.split('\n')[0]
+                    except:
+                        chat_name = "Unknown"
                     
-                    for msg in messages:
-                        text = msg.text.lower()
-                        latest_message = text
-                        if any(keyword in text for keyword in ['stop', 'unsubscribe', 'no', 'do not contact']):
-                            opt_out_detected = True
-                            break
-                    
-                    if opt_out_detected:
-                        # Update as opted out
-                        update_supabase_record(phone, {
-                            "replied": True,
-                            "last_replied_at": datetime.utcnow().isoformat(),
-                            "send_error": "optout"
-                        })
+                    # Extract messages
+                    messages = driver.find_elements(By.XPATH, '//div[@data-testid="msg-container"]')
+                    if messages:
+                        last_message = messages[-1].text
+                        logger.info(f"New reply from {chat_name}: {last_message}")
                         
-                        # Send opt-out confirmation
-                        send_whatsapp_message(driver, phone, OPTOUT_REPLY)
-                        send_telegram_message(ADMIN_TELEGRAM_ID, f"✅ User {phone} ({contact_name}) opted out")
-                    else:
-                        # Update as replied
-                        update_supabase_record(phone, {
-                            "replied": True,
-                            "last_replied_at": datetime.utcnow().isoformat()
-                        })
-                        send_telegram_message(ADMIN_TELEGRAM_ID, f"📩 New reply from {phone} ({contact_name}): {latest_message}")
+                        # Store in Supabase
+                        store_reply(chat_name, last_message)
                         
-            except Exception as e:
-                logger.error(f"Error processing chat: {e}")
-                
-    except Exception as e:
-        logger.error(f"Error detecting replies: {e}")
+                        # Send notification to admin
+                        send_telegram_message(ADMIN_TELEGRAM_ID, f"📩 New reply from {chat_name}: {last_message}")
+                except Exception as e:
+                    logger.error(f"Error processing chat: {e}")
+                    continue
+            
+            # Wait before next check
+            time.sleep(30)  # Check every 30 seconds
+        except Exception as e:
+            logger.error(f"Error in reply detection loop: {e}")
+            time.sleep(30)  # Continue checking even if there's an error
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -277,91 +424,48 @@ def health_check():
 
 @app.route('/send', methods=['POST'])
 def send_message():
-    """Send WhatsApp message endpoint"""
-    global DAILY_SENT_COUNT, FAILURE_COUNT, BLOCK_COUNT
+    """Send a WhatsApp message"""
+    global DAILY_SENT_COUNT, FAILURE_COUNT, BLOCK_COUNT, STOP_SENDING
     
-    # Check if sending is stopped
+    # Check if we should stop sending
     if STOP_SENDING:
-        return jsonify({"status": "sending_stopped"}), 200
+        return jsonify({"error": "Sending stopped due to safety triggers"}), 429
+    
+    # Check if within send window
+    if not is_within_send_window():
+        return jsonify({"error": "Outside send window (9 AM - 6 PM IST)"}), 429
     
     # Check daily limit
     if DAILY_SENT_COUNT >= get_daily_limit():
-        return jsonify({"status": "daily_limit_reached"}), 200
-    
-    # Check time window
-    if not is_within_send_window():
-        return jsonify({"status": "outside_send_window"}), 200
-    
-    # Parse request data
-    data = request.get_json()
-    phone = data.get('phone')
-    name = data.get('name', '')
-    batch_id = data.get('batch_id')
-    job_type = data.get('job_type')  # 'initial' or 'followup'
-    
-    if not phone or not job_type:
-        return jsonify({"error": "Missing required fields"}), 400
-    
-    # Fallback for name if empty
-    if not name or name.strip() == '':
-        name = 'there'  # Default fallback
-    
-    # Check Supabase record
-    record = get_supabase_record(phone)
-    if not record:
-        return jsonify({"error": "Record not found"}), 404
-    
-    # Skip if already replied
-    if record.get('replied'):
-        return jsonify({"status": "already_replied"}), 200
-    
-    # Skip based on job type
-    if job_type == "initial" and record.get('first_sent_at'):
-        return jsonify({"status": "already_sent_initial"}), 200
-    elif job_type == "followup" and record.get('followup_sent'):
-        return jsonify({"status": "already_sent_followup"}), 200
-    
-    # Select appropriate message template
-    if job_type == "initial":
-        message = random.choice(INITIAL_TEMPLATES).format(name=name)
-    elif job_type == "followup":
-        message = FOLLOWUP_TEMPLATE.format(name=name)
-    else:
-        return jsonify({"error": "Invalid job_type"}), 400
-    
-    # Initialize WebDriver
-    driver = init_webdriver()
-    if not driver:
-        return jsonify({"error": "Failed to initialize WebDriver"}), 500
+        return jsonify({"error": f"Daily limit reached ({get_daily_limit()} messages)"}), 429
     
     try:
-        # Send message
-        result = send_whatsapp_message(driver, phone, message)
+        data = request.get_json()
+        phone = data.get('phone')
+        message = data.get('message')
+        batch_id = data.get('batch_id', 'manual')
         
-        # Update Supabase based on result
+        if not phone or not message:
+            return jsonify({"error": "Phone and message are required"}), 400
+        
+        # Add random delay between messages
+        delay = random.randint(8, 12)
+        logger.info(f"Waiting {delay} seconds before sending message...")
+        time.sleep(delay)
+        
+        # Send the message
+        result = send_whatsapp_message(phone, message)
+        
         if result == "success":
-            if job_type == "initial":
-                update_supabase_record(phone, {
-                    "first_sent_at": datetime.utcnow().isoformat(),
-                    "last_sent_at": datetime.utcnow().isoformat()
-                })
-            elif job_type == "followup":
-                update_supabase_record(phone, {
-                    "followup_sent": True,
-                    "last_sent_at": datetime.utcnow().isoformat()
-                })
-            return jsonify({"status": "sent"}), 200
+            # Record in Supabase
+            record_sent_number(phone, data.get('business_name', ''), data.get('email', ''), batch_id)
+            return jsonify({"status": "sent", "phone": phone}), 200
         else:
-            # Record error
-            update_supabase_record(phone, {
-                "send_error": result
-            })
-            return jsonify({"status": "failed", "reason": result}), 200
+            return jsonify({"error": f"Failed to send message: {result}"}), 500
             
-    finally:
-        driver.quit()
-        # Add delay between sends
-        time.sleep(random.uniform(8, 12))
+    except Exception as e:
+        logger.error(f"Error in send_message endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/stop', methods=['POST'])
 def stop_sending():
@@ -372,12 +476,35 @@ def stop_sending():
     return jsonify({"status": "stopped"}), 200
 
 @app.route('/start', methods=['POST'])
-def start_sending():
-    """Resume sending endpoint"""
-    global STOP_SENDING
-    STOP_SENDING = False
-    send_telegram_message(ADMIN_TELEGRAM_ID, "✅ WhatsApp sending resumed")
-    return jsonify({"status": "started"}), 200
+def start_driver():
+    """Start Chrome driver for WhatsApp Web"""
+    global driver, REPLY_DETECTION_ACTIVE
+    try:
+        if driver is None:
+            logger.info("Initializing Chrome driver...")
+            driver = init_webdriver()
+            if driver is None:
+                logger.error("Failed to initialize Chrome driver")
+                return jsonify({"status": "error", "message": "Failed to initialize Chrome driver"}), 500
+            
+            # Navigate to WhatsApp Web
+            driver.get("https://web.whatsapp.com")
+            logger.info("Chrome driver initialized and navigated to WhatsApp Web")
+            
+            # Start reply detection thread
+            if not REPLY_DETECTION_ACTIVE:
+                reply_thread = threading.Thread(target=detect_replies, daemon=True)
+                reply_thread.start()
+                REPLY_DETECTION_ACTIVE = True
+                logger.info("Reply detection thread started")
+            
+            return jsonify({"status": "success", "message": "Chrome driver started"}), 200
+        else:
+            logger.info("Chrome driver already running")
+            return jsonify({"status": "success", "message": "Chrome driver already running"}), 200
+    except Exception as e:
+        logger.error(f"Error starting Chrome driver: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 def init_supabase_tables():
     """Initialize Supabase tables if they don't exist"""
@@ -440,40 +567,9 @@ def init_supabase_tables():
     except Exception as e:
         logger.error(f"Failed to initialize Supabase tables: {e}")
 
-def background_reply_detector():
-    """Background thread to detect replies"""
-    driver = init_webdriver()
-    if not driver:
-        logger.error("Failed to initialize WebDriver for reply detection")
-        return
-        
-    try:
-        # Open WhatsApp Web
-        driver.get("https://web.whatsapp.com")
-        
-        # Wait for user to scan QR code
-        WebDriverWait(driver, 120).until(
-            EC.presence_of_element_located((By.XPATH, '//div[@role="row"]'))
-        )
-        
-        # Continuously check for replies
-        while True:
-            if not STOP_SENDING:
-                detect_replies(driver)
-            time.sleep(30)  # Check every 30 seconds
-            
-    except Exception as e:
-        logger.error(f"Error in reply detector: {e}")
-    finally:
-        driver.quit()
-
 if __name__ == '__main__':
     # Initialize Supabase tables
     init_supabase_tables()
     
-    # Start background reply detector thread
-    reply_thread = Thread(target=background_reply_detector, daemon=True)
-    reply_thread.start()
-    
-    # Start Flask app
-    app.run(host='0.0.0.0', port=8000)
+    # Start Flask app (reply detection will be started on demand)
+    app.run(host='0.0.0.0', port=8000, debug=False)

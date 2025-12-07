@@ -65,13 +65,13 @@ All variables are automatically loaded from `.env` file:
 - Follow-up message automation
 - Admin reporting
 
-### Auto-Import Script (`auto_import_n8n.py`)
-- Automatically imports workflow to n8n
-- Configures environment variables
-- Waits for services to be ready
+### Auto-Import Functionality
+- Workflow auto-import functionality is now integrated into the management script
+- Environment variables are automatically configured
+- Services are checked for readiness before import
 
-### Health Monitor (`health_monitor.py`)
-- 24/7 system health checking
+### Health Monitoring
+- 24/7 system health checking is integrated into the WhatsApp worker
 - Telegram alerts for downtime
 - Uptime ping integration
 

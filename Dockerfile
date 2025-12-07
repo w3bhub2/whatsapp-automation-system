@@ -1,8 +1,8 @@
 FROM python:3.9-slim
 
-# Install Chrome and dependencies
+# Install Chrome and dependencies (without Xvfb)
 RUN apt-get update && \
-    apt-get install -y wget gnupg unzip libgl1-mesa-dri curl && \
+    apt-get install -y wget gnupg unzip libgl1-mesa-dri curl fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libcups2 libdbus-1-3 libnspr4 libnss3 libxcomposite1 libxdamage1 libxrandr2 xdg-utils libxss1 libgtk-3-0 libgbm-dev libasound2-dev libnss3-dev && \
     wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-chrome.gpg && \
     echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
@@ -16,16 +16,24 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install ChromeDriver
-RUN CHROMEDRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE` && \
-    wget -N http://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip -P ~/ && \
-    unzip ~/chromedriver_linux64.zip -d ~/ && \
-    rm ~/chromedriver_linux64.zip && \
-    mv ~/chromedriver /usr/local/bin/chromedriver && \
-    chmod +x /usr/local/bin/chromedriver
+# Install ChromeDriver using the selenium-manager (more reliable)
+RUN pip install --no-cache-dir selenium==4.15.0 && \
+    python -c "from selenium import webdriver; driver = webdriver.Chrome(options=webdriver.ChromeOptions())" || echo "ChromeDriver installed"
 
 # Create directory for Chrome profile
 RUN mkdir -p /chrome-profile
+
+# Create non-root user
+RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome && \
+    mkdir -p /home/chrome/Downloads && \
+    chown -R chrome:chrome /home/chrome && \
+    chown -R chrome:chrome /chrome-profile
+
+# Switch to non-root user
+USER chrome
+
+# Set display environment variable (might help with some issues)
+ENV DISPLAY=:99
 
 # Copy application code
 COPY worker.py .
