@@ -50,7 +50,8 @@ def create_render_blueprint():
                     {"key": "ADMIN_TELEGRAM_ID", "sync": False},
                     {"key": "WHATSAPP_WORKER_ENDPOINT", "value": "https://whatsapp-worker-w53e.onrender.com"}
                 ],
-                "healthCheckPath": "/healthz"
+                "healthCheckPath": "/healthz",
+                "dockerCommand": "n8n"
             }
         ]
     }

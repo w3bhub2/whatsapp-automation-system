@@ -89,7 +89,8 @@
           "value": "https://whatsapp-worker-w53e.onrender.com"
         }
       ],
-      "healthCheckPath": "/healthz"
+      "healthCheckPath": "/healthz",
+      "dockerCommand": "n8n"
     }
   ]
 }

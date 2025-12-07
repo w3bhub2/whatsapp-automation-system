@@ -36,10 +36,10 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-ADMIN_TELEGRAM_ID = os.getenv('ADMIN_TELEGRAM_ID')
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+ADMIN_TELEGRAM_ID = os.environ.get('ADMIN_TELEGRAM_ID')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 
 # Global state
 STOP_SENDING = False
@@ -507,9 +507,44 @@ def start_driver():
         logger.error(f"Error starting Chrome driver: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/qr', methods=['GET'])
+def get_qr_code():
+    """Get QR code for WhatsApp Web authentication"""
+    global driver
+    try:
+        if driver is None:
+            logger.info("Initializing Chrome driver for QR code...")
+            driver = init_webdriver()
+            if driver is None:
+                logger.error("Failed to initialize Chrome driver")
+                return jsonify({"status": "error", "message": "Failed to initialize Chrome driver"}), 500
+        
+        # Navigate to WhatsApp Web to get QR code
+        driver.get("https://web.whatsapp.com")
+        time.sleep(5)  # Wait for QR code to load
+        
+        # Take screenshot of the page
+        screenshot_path = "/tmp/whatsapp_qr.png"
+        driver.save_screenshot(screenshot_path)
+        
+        # Return success message with instructions
+        return jsonify({
+            "status": "success", 
+            "message": "QR code generated. Please access the container to scan it.",
+            "instructions": "Since Render free tier doesn't allow shell access, you'll need to upgrade to a paid plan or use a different method to scan the QR code."
+        }), 200
+    except Exception as e:
+        logger.error(f"Error generating QR code: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 def record_sent_number(phone, business_name, email, batch_id):
     """Record a sent number in Supabase"""
     try:
+        # Check if required environment variables are set
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            logger.error("Supabase URL or Key not set")
+            return False
+            
         # Prepare the data
         data = {
             "phone": phone,
@@ -543,6 +578,11 @@ def record_sent_number(phone, business_name, email, batch_id):
 def init_supabase_tables():
     """Initialize Supabase tables if they don't exist"""
     try:
+        # Check if required environment variables are set
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            logger.error("Supabase URL or Key not set")
+            return
+            
         # First check if tables already exist by trying to query them
         url = f"{SUPABASE_URL}/rest/v1/sent_numbers?limit=1"
         headers = {

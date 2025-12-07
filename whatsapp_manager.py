@@ -572,6 +572,11 @@ class WhatsAppManager:
         print("3. Scan the QR code that appears with your phone")
         print("4. Press Enter after scanning to continue")
         print("\n⚠️  Note: You may need to run this command multiple times if the first attempt fails")
+        print("\n🚨 RENDER FREE TIER NOTE: Since Render free tier doesn't allow shell access, you have two options:")
+        print("   Option 1: Upgrade to a paid Render plan")
+        print("   Option 2: Run this locally with Docker:")
+        print("     docker-compose up -d")
+        print("     docker exec -it whatsapp-worker python -c \"from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()\"")
 
     def verify_whatsapp_session(self):
         """Verify WhatsApp session is active"""
@@ -611,6 +616,9 @@ def main():
         print("  send-test         - Send test messages (1-hour test)")
         print("  get-qr           - Get WhatsApp QR code for authentication")
         print("  verify-session   - Verify WhatsApp session is active")
+        print("\n🚨 RENDER DEPLOYMENT NOTE:")
+        print("   For Render deployments, use the /qr endpoint:")
+        print("   curl https://whatsapp-worker-w53e.onrender.com/qr")
         return
     
     command = sys.argv[1]
