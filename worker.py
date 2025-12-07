@@ -503,66 +503,62 @@ def start_driver():
         logger.error(f"Error starting Chrome driver: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-def init_supabase_tables():
-    """Initialize Supabase tables if they don't exist"""
+def record_sent_number(phone, business_name, email, batch_id):
+    """Record a sent number in Supabase"""
     try:
-        # Create sent_numbers table
-        create_table_sql = """
-        CREATE TABLE IF NOT EXISTS sent_numbers (
-          phone TEXT PRIMARY KEY,
-          business_name TEXT,
-          email TEXT,
-          first_sent_at TIMESTAMP,
-          last_sent_at TIMESTAMP,
-          last_replied_at TIMESTAMP,
-          initial_sent_batch TEXT,
-          followup_sent BOOLEAN DEFAULT FALSE,
-          replied BOOLEAN DEFAULT FALSE,
-          send_error TEXT
-        );
-        """
+        # Prepare the data
+        data = {
+            "phone": phone,
+            "business_name": business_name,
+            "email": email,
+            "first_sent_at": datetime.utcnow().isoformat(),
+            "last_sent_at": datetime.utcnow().isoformat(),
+            "initial_sent_batch": batch_id
+        }
         
-        url = f"{SUPABASE_URL}/rest/v1/query"
+        # Insert into Supabase (will automatically create table if it doesn't exist)
+        url = f"{SUPABASE_URL}/rest/v1/sent_numbers"
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-        }
-        
-        data = {
-            "query": create_table_sql
+            "Prefer": "resolution=merge-duplicates"
         }
         
         response = requests.post(url, headers=headers, json=data)
-        logger.info(f"Sent_numbers table creation response: {response.status_code}")
-        
-        # Create index
-        create_index_sql = "CREATE INDEX IF NOT EXISTS idx_first_sent_at ON sent_numbers(first_sent_at);"
-        data = {
-            "query": create_index_sql
-        }
-        response = requests.post(url, headers=headers, json=data)
-        logger.info(f"Index creation response: {response.status_code}")
-        
-        # Create batches table
-        create_batches_sql = """
-        CREATE TABLE IF NOT EXISTS batches (
-          id TEXT PRIMARY KEY,
-          created_at TIMESTAMP DEFAULT now(),
-          csv_filename TEXT,
-          processed_count INTEGER DEFAULT 0
-        );
-        """
-        
-        data = {
-            "query": create_batches_sql
-        }
-        response = requests.post(url, headers=headers, json=data)
-        logger.info(f"Batches table creation response: {response.status_code}")
-        
+        if response.status_code in [200, 201]:
+            logger.info(f"Recorded sent number {phone} in Supabase")
+            return True
+        else:
+            logger.error(f"Failed to record sent number {phone}: {response.status_code} - {response.text}")
+            return False
     except Exception as e:
-        logger.error(f"Failed to initialize Supabase tables: {e}")
+        logger.error(f"Error recording sent number {phone}: {e}")
+        return False
+
+def init_supabase_tables():
+    """Initialize Supabase tables if they don't exist"""
+    try:
+        # First check if tables already exist by trying to query them
+        url = f"{SUPABASE_URL}/rest/v1/sent_numbers?limit=1"
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        # If we get a 404, tables don't exist and we need to create them
+        # If we get a 200, tables exist and we're good
+        if response.status_code == 404:
+            logger.info("Tables don't exist yet, they will be created automatically when data is inserted")
+        elif response.status_code == 200:
+            logger.info("Tables already exist")
+        else:
+            logger.info(f"Supabase check response: {response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"Failed to check Supabase tables: {e}")
 
 if __name__ == '__main__':
     # Initialize Supabase tables
