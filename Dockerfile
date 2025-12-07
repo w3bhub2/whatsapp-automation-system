@@ -21,13 +21,13 @@ RUN pip install --no-cache-dir selenium==4.15.0 && \
     python -c "from selenium import webdriver; driver = webdriver.Chrome(options=webdriver.ChromeOptions())" || echo "ChromeDriver installed"
 
 # Create directory for Chrome profile
-RUN mkdir -p /chrome-profile
+RUN mkdir -p /tmp/chrome-profile
 
 # Create non-root user
 RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome && \
     mkdir -p /home/chrome/Downloads && \
     chown -R chrome:chrome /home/chrome && \
-    chown -R chrome:chrome /chrome-profile
+    chown -R chrome:chrome /tmp/chrome-profile
 
 # Switch to non-root user
 USER chrome

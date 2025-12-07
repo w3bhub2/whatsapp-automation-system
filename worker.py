@@ -159,7 +159,7 @@ def init_webdriver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--user-data-dir=/chrome-profile")  # Persistent profile
+    chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")  # Persistent profile
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-plugins")
     chrome_options.add_argument("--disable-images")
