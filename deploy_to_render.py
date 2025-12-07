@@ -39,7 +39,16 @@ def create_render_blueprint():
                 "plan": "free",
                 "envVars": [
                     {"key": "GENERIC_TIMEZONE", "value": "Asia/Kolkata"},
-                    {"key": "TZ", "value": "Asia/Kolkata"}
+                    {"key": "TZ", "value": "Asia/Kolkata"},
+                    {"key": "N8N_ENCRYPTION_KEY", "sync": False},
+                    {"key": "N8N_USER_MANAGEMENT_DISABLED", "value": "true"},
+                    {"key": "N8N_API_KEY", "value": "supersecretkey"},
+                    {"key": "TELEGRAM_BOT_TOKEN", "sync": False},
+                    {"key": "TELEGRAM_CHANNEL_ID", "sync": False},
+                    {"key": "SUPABASE_URL", "sync": False},
+                    {"key": "SUPABASE_KEY", "sync": False},
+                    {"key": "ADMIN_TELEGRAM_ID", "sync": False},
+                    {"key": "WHATSAPP_WORKER_ENDPOINT", "value": "https://whatsapp-worker-w53e.onrender.com"}
                 ],
                 "healthCheckPath": "/healthz"
             }
