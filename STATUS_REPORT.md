@@ -1,6 +1,6 @@
 # W3BHub WhatsApp Automation System - STATUS REPORT
 
-## ✅ SYSTEM STATUS: PRODUCTION READY
+## ⚠️ SYSTEM STATUS: NEARLY READY - REQUIRES ONE-TIME SETUP
 
 ### 🔧 INFRASTRUCTURE COMPONENTS
 - [x] WhatsApp Worker (Docker container)
@@ -14,7 +14,7 @@
 - [x] Reply Detection (Auto-monitoring)
 - [x] Admin Notifications (Telegram alerts)
 - [x] Safety Mechanisms (Rate limiting, bans)
-- [x] Persistent Sessions (Chrome profile)
+- [!] Persistent Sessions (Chrome profile) - Requires one-time setup
 - [x] Deployment Files (GitHub + Render)
 
 ### 🛡️ ANTI-BAN FEATURES IMPLEMENTED
@@ -37,7 +37,7 @@
 - [x] Persistent Storage Volumes
 - [x] Render Deployment Blueprint
 - [x] GitHub Repository Ready
-- [x] Comprehensive Documentation
+- [!] Documentation Updated for Accuracy
 
 ### 📋 WHAT'S LEFT FOR YOU
 1. **ONE-TIME QR CODE SCAN** - Authenticate WhatsApp Web session
@@ -87,11 +87,15 @@ docker exec -it whatsapp-worker python -c "from worker import init_webdriver; dr
 - **Dependency Risk**: LOW (1/5) - Multiple fallbacks
 
 ## 🚨 CRITICAL SUCCESS FACTORS
-1. **QR Code Authentication** - One-time requirement
+1. **QR Code Authentication** - One-time requirement (cannot be automated in Render free tier)
 2. **Daily CSV Uploads** - At 6 AM to Telegram channel
 3. **Supabase Configuration** - Proper table setup
 4. **Telegram Permissions** - Bot access to channel
 5. **Time Zone Settings** - IST (UTC+5:30) configuration
+
+## 📞 SUPPORT
+For assistance with setup or troubleshooting, message WebHub on WhatsApp:
+https://wa.me/message/XDA2UCEQCOILO1
 
 ## 📈 OPTIMIZATION OPPORTUNITIES
 1. **Multi-account Rotation** - Deploy multiple instances
@@ -101,5 +105,5 @@ docker exec -it whatsapp-worker python -c "from worker import init_webdriver; dr
 5. **A/B Testing** - Template performance tracking
 
 ---
-**Status**: ✅ READY FOR PRODUCTION DEPLOYMENT
+**Status**: ⚠️ NEARLY READY - REQUIRES ONE-TIME SETUP
 **Next Step**: Scan WhatsApp QR code for authentication

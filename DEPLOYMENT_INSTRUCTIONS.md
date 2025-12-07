@@ -26,17 +26,8 @@
    - ADMIN_TELEGRAM_ID: Your admin Telegram ID
    - UPTIME_PING_SECRET: Your uptime ping secret (optional)
 
-## Step 3: Scan WhatsApp QR Code
-1. After deployment, access the WhatsApp worker shell:
-   ```bash
-   render ssh whatsapp-worker
-   ```
-2. Run the QR code generator:
-   ```bash
-   python -c "from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()"
-   ```
-3. Scan the QR code with your phone
-4. Press Enter to continue
+## Step 3: WhatsApp Authentication
+Due to WhatsApp Web security restrictions, you'll need to authenticate manually once after deployment. This cannot be automated.
 
 ## Step 4: Verify Deployment
 1. Check service statuses on Render dashboard
@@ -56,3 +47,7 @@ After initial setup, the system runs completely autonomously:
 - No manual intervention required
 - Self-healing containers
 - Automatic updates via GitHub
+
+## Support
+For assistance with setup or troubleshooting, message WebHub on WhatsApp:
+https://wa.me/message/XDA2UCEQCOILO1

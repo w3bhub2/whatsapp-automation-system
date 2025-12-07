@@ -9,6 +9,8 @@ Single script to manage all operations:
 - Simulate CSV uploads
 - Import workflows to n8n
 - Check system health
+
+For support, message WebHub on WhatsApp: https://wa.me/message/XDA2UCEQCOILO1
 """
 
 import os
@@ -562,21 +564,12 @@ class WhatsAppManager:
             # Wait a bit between messages
             time.sleep(5)
 
-    def get_whatsapp_qr(self):
-        """Get WhatsApp QR code for authentication"""
-        print("📱 Getting WhatsApp QR code for authentication...")
-        print("\n📝 Instructions:")
-        print("1. Run this command in a separate terminal:")
-        print("   docker exec -it whatsapp-worker python -c \"from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()\"")
-        print("\n2. This will open WhatsApp Web in the container")
-        print("3. Scan the QR code that appears with your phone")
-        print("4. Press Enter after scanning to continue")
-        print("\n⚠️  Note: You may need to run this command multiple times if the first attempt fails")
-        print("\n🚨 RENDER FREE TIER NOTE: Since Render free tier doesn't allow shell access, you have two options:")
-        print("   Option 1: Upgrade to a paid Render plan")
-        print("   Option 2: Run this locally with Docker:")
-        print("     docker-compose up -d")
-        print("     docker exec -it whatsapp-worker python -c \"from worker import init_webdriver; driver = init_webdriver(); driver.get('https://web.whatsapp.com'); input('Press Enter after scanning QR code...'); driver.quit()\"")
+    def get_support_contact(self):
+        """Get support contact information"""
+        print("📱 For WhatsApp authentication and support, please message WebHub on WhatsApp:")
+        print("   https://wa.me/message/XDA2UCEQCOILO1")
+        print("\n⚠️  Note: Due to WhatsApp Web security restrictions, authentication cannot be automated.")
+        print("   Manual authentication is required once after deployment.")
 
     def verify_whatsapp_session(self):
         """Verify WhatsApp session is active"""
@@ -614,11 +607,11 @@ def main():
         print("  test-integration  - Test full system integration")
         print("  simulate-daily    - Simulate daily workflow")
         print("  send-test         - Send test messages (1-hour test)")
-        print("  get-qr           - Get WhatsApp QR code for authentication")
+        print("  get-support      - Get support contact information")
         print("  verify-session   - Verify WhatsApp session is active")
         print("\n🚨 RENDER DEPLOYMENT NOTE:")
-        print("   For Render deployments, use the /qr endpoint:")
-        print("   curl https://whatsapp-worker-w53e.onrender.com/qr")
+        print("   For Render deployments, authentication must be performed by messaging WebHub on WhatsApp:")
+        print("   https://wa.me/message/XDA2UCEQCOILO1")
         return
     
     command = sys.argv[1]
@@ -643,8 +636,8 @@ def main():
         manager.simulate_daily_workflow()
     elif command == "send-test":
         manager.start_messaging_test()
-    elif command == "get-qr":
-        manager.get_whatsapp_qr()
+    elif command == "get-support":
+        manager.get_support_contact()
     elif command == "verify-session":
         manager.verify_whatsapp_session()
     else:

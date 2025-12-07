@@ -3,6 +3,8 @@
 WhatsApp Web Automation Worker
 
 Flask-based worker that handles WhatsApp Web automation using Selenium
+
+For support, message WebHub on WhatsApp: https://wa.me/message/XDA2UCEQCOILO1
 """
 
 import os
@@ -12,7 +14,7 @@ import random
 import urllib.parse
 import logging
 from datetime import datetime, timedelta
-from threading import Thread, Lock
+from threading import Thread, Lock, Timer
 from dotenv import load_dotenv
 
 # Import Selenium
@@ -30,6 +32,7 @@ from flask import Flask, request, jsonify
 # Import requests for Supabase
 import requests
 
+
 # Load environment variables
 load_dotenv()
 
@@ -40,6 +43,7 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 ADMIN_TELEGRAM_ID = os.environ.get('ADMIN_TELEGRAM_ID')
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+UPTIME_PING_SECRET = os.environ.get('UPTIME_PING_SECRET')
 
 # Global state
 STOP_SENDING = False
@@ -48,6 +52,7 @@ START_DATE = datetime.now().date()
 SEND_LOCK = Lock()
 FAILURE_COUNT = 0
 BLOCK_COUNT = 0
+UPTIME_PING_THREAD = None
 
 # Global variables for WebDriver and reply detection
 driver = None
@@ -120,6 +125,32 @@ def send_telegram_message(chat_id, text):
     except Exception as e:
         logger.error(f"Failed to send Telegram message: {e}")
 
+def send_uptime_ping():
+    """Send uptime ping to BetterStack if UPTIME_PING_SECRET is configured"""
+    global UPTIME_PING_THREAD
+    
+    # If no secret is configured, don't send pings
+    if not UPTIME_PING_SECRET:
+        logger.info("No UPTIME_PING_SECRET configured, skipping uptime pings")
+        return
+    
+    try:
+        # Send ping to BetterStack
+        ping_url = f"https://uptime.betterstack.com/api/v1/heartbeat/{UPTIME_PING_SECRET}"
+        response = requests.get(ping_url, timeout=10)
+        
+        if response.status_code == 200:
+            logger.info("Uptime ping sent successfully")
+        else:
+            logger.warning(f"Uptime ping failed with status {response.status_code}")
+    except Exception as e:
+        logger.error(f"Failed to send uptime ping: {e}")
+    
+    # Schedule next ping in 5 minutes (300 seconds)
+    UPTIME_PING_THREAD = Timer(300.0, send_uptime_ping)
+    UPTIME_PING_THREAD.daemon = True
+    UPTIME_PING_THREAD.start()
+
 def update_supabase_record(phone, updates):
     """Update record in Supabase"""
     try:
@@ -154,15 +185,18 @@ def get_supabase_record(phone):
         return None
 
 def init_webdriver():
-    """Initialize Chrome WebDriver - SIMPLIFIED VERSION"""
+    """Initialize Chrome WebDriver with proper options for Docker environment"""
     try:
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1200,800")
-        chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--headless=new")
+        
+        # Additional options for stability
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         
         driver = webdriver.Chrome(options=chrome_options)
         return driver
@@ -437,48 +471,9 @@ def start_driver():
         logger.error(f"Error starting Chrome driver: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/qr', methods=['GET'])
-def get_qr_code():
-    """Get QR code for WhatsApp Web authentication - FIXED VERSION"""
-    global driver
-    try:
-        # Close existing driver if running
-        if driver:
-            try:
-                driver.quit()
-            except:
-                pass
-            driver = None
-        
-        # Simple Chrome options that work
-        chrome_options = Options()
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--window-size=1200,800")
-        chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
-        
-        # Only use headless if we can display the QR code somehow
-        # For now, we'll just create the session and save it
-        
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get("https://web.whatsapp.com")
-        
-        # Wait a moment for QR code to load
-        time.sleep(3)
-        
-        # Save the session by keeping the profile
-        # The profile is automatically saved to /tmp/chrome-profile
-        
-        return jsonify({
-            "status": "success",
-            "message": "Session created. Profile saved to /tmp/chrome-profile",
-            "instructions": "For Docker: docker exec -it whatsapp-worker python -c \"from worker import driver; driver.get('https://web.whatsapp.com'); input('Press Enter after scanning...'); driver.quit()\""
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error generating QR code: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+# Authentication
+# Due to WhatsApp Web security restrictions, authentication must be performed by messaging WebHub on WhatsApp
+# Contact: https://wa.me/message/XDA2UCEQCOILO1
 
 def record_sent_number(phone, business_name, email, batch_id):
     """Record a sent number in Supabase"""
@@ -550,6 +545,9 @@ def init_supabase_tables():
 if __name__ == '__main__':
     # Initialize Supabase tables
     init_supabase_tables()
+    
+    # Start uptime ping thread
+    send_uptime_ping()
     
     # Start Flask app (reply detection will be started on demand)
     app.run(host='0.0.0.0', port=8000, debug=False)

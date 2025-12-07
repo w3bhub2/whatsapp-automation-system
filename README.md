@@ -1,11 +1,9 @@
 # W3BHub WhatsApp Automation System
 
-Fully automated WhatsApp marketing system with n8n orchestration, WhatsApp Web automation, and Supabase database.
+WhatsApp marketing system with n8n orchestration, WhatsApp Web automation, and Supabase database.
 
 ## Features
 
-- ✅ **Zero Manual Setup** - Everything auto-deploys
-- ✅ **Auto-Import Workflow** - No manual n8n import needed
 - ✅ **Auto-Database Setup** - Tables created automatically
 - ✅ **Auto-Health Monitoring** - 24/7 system monitoring
 - ✅ **Anti-Flagging** - Warm-up schedules, random delays, safety triggers
@@ -15,12 +13,13 @@ Fully automated WhatsApp marketing system with n8n orchestration, WhatsApp Web a
 
 ## How It Works
 
-1. **CSV Upload**: Send a CSV file to your Telegram channel
-2. **Automatic Processing**: n8n cron job checks Telegram every 10 minutes
-3. **WhatsApp Sending**: Messages sent with anti-flagging measures
-4. **Reply Detection**: System automatically detects replies
-5. **Follow-ups**: 48-hour follow-up messages sent automatically
-6. **Admin Reports**: Daily reports sent to admin Telegram
+1. **One-Time Setup**: Scan WhatsApp QR code for authentication
+2. **CSV Upload**: Send a CSV file to your Telegram channel
+3. **Automatic Processing**: n8n cron job checks Telegram every 10 minutes
+4. **WhatsApp Sending**: Messages sent with anti-flagging measures
+5. **Reply Detection**: System automatically detects replies
+6. **Follow-ups**: 48-hour follow-up messages sent automatically
+7. **Admin Reports**: Daily reports sent to admin Telegram
 
 ## Deployment
 
@@ -58,6 +57,7 @@ All variables are automatically loaded from `.env` file:
 - Supabase integration for data storage
 - Safety mechanisms (daily caps, time windows, warm-up)
 - Reply detection system
+- QR code generation for authentication
 
 ### n8n Workflow (`whatsapp_campaign.json`)
 - CSV processing from Telegram
@@ -223,15 +223,15 @@ docker exec -it n8n curl -X POST http://localhost:5678/workflows/[WORKFLOW_ID]/r
 
 ### Common WhatsApp Issues
 
-1. **QR code not appearing**:
-   - Check Chrome/WebDriver installation
-   - Verify X11 forwarding if running on headless server
-   - Check WhatsApp Web accessibility
-
-2. **Messages not sending**:
+1. **Messages not sending**:
    - Check daily limits and time windows
    - Verify phone number formatting
    - Check for WhatsApp blocks or restrictions
+
+### Support
+
+For assistance with setup or troubleshooting, message WebHub on WhatsApp:
+https://wa.me/message/XDA2UCEQCOILO1
 
 ### Restart Services
 ```bash
