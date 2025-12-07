@@ -154,87 +154,17 @@ def get_supabase_record(phone):
         return None
 
 def init_webdriver():
-    """Initialize Chrome WebDriver with enhanced anti-detection features"""
-    chrome_options = Options()
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")  # Persistent profile
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-plugins")
-    chrome_options.add_argument("--disable-images")
-    chrome_options.add_argument("--disable-javascript")  # Enable JavaScript after loading
-    chrome_options.add_argument("--disable-popup-blocking")
-    chrome_options.add_argument("--disable-background-timer-throttling")
-    chrome_options.add_argument("--disable-renderer-backgrounding")
-    chrome_options.add_argument("--disable-backgrounding-occluded-windows")
-    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--disable-notifications")
-    chrome_options.add_argument("--disable-web-security")
-    chrome_options.add_argument("--allow-running-insecure-content")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--start-maximized")
-    
-    # Additional options for Docker environment
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--disable-application-cache")
-    chrome_options.add_argument("--disable-extensions-http-throttling")
-    chrome_options.add_argument("--disable-features=TranslateUI")
-    chrome_options.add_argument("--disable-ipc-flooding-protection")
-    chrome_options.add_argument("--disable-background-networking")
-    chrome_options.add_argument("--disable-default-apps")
-    chrome_options.add_argument("--disable-breakpad")
-    chrome_options.add_argument("--disable-component-update")
-    chrome_options.add_argument("--disable-domain-reliability")
-    chrome_options.add_argument("--disable-sync")
-    chrome_options.add_argument("--metrics-recording-only")
-    chrome_options.add_argument("--no-first-run")
-    chrome_options.add_argument("--safebrowsing-disable-auto-update")
-    chrome_options.add_argument("--disable-logging")
-    chrome_options.add_argument("--disable-crash-reporter")
-    chrome_options.add_argument("--disable-hang-monitor")
-    chrome_options.add_argument("--disable-background-timer-throttling")
-    chrome_options.add_argument("--disable-browser-side-navigation")
-    chrome_options.add_argument("--disable-dev-tools")
-    chrome_options.add_argument("--memory-pressure-off")
-    chrome_options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
-    chrome_options.add_argument("--disable-features=VizDisplayCompositor")
-    chrome_options.add_argument("--remote-debugging-port=9222")
-    chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
-    
+    """Initialize Chrome WebDriver - SIMPLIFIED VERSION"""
     try:
+        chrome_options = Options()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1200,800")
+        chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        
         driver = webdriver.Chrome(options=chrome_options)
-        # Remove automation indicators
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-                
-                Object.defineProperty(navigator, 'plugins', {
-                    get: () => [1, 2, 3, 4, 5]
-                });
-                
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['en-US', 'en']
-                });
-                
-                window.chrome = {
-                    runtime: {}
-                };
-                
-                Object.defineProperty(navigator, 'permissions', {
-                    get: () => ({
-                        query: Promise.resolve.bind(Promise)
-                    })
-                });
-                
-                // Hide webdriver property
-                delete navigator.__proto__.webdriver;
-            """
-        })
         return driver
     except Exception as e:
         logger.error(f"Failed to initialize Chrome driver: {e}")
@@ -509,49 +439,43 @@ def start_driver():
 
 @app.route('/qr', methods=['GET'])
 def get_qr_code():
-    """Get QR code for WhatsApp Web authentication"""
+    """Get QR code for WhatsApp Web authentication - FIXED VERSION"""
     global driver
     try:
-        if driver is None:
-            logger.info("Initializing Chrome driver for QR code...")
-            # Use simpler options for QR code generation
-            chrome_options = Options()
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-            chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
-            chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--disable-plugins")
-            chrome_options.add_argument("--disable-images")
-            chrome_options.add_argument("--disable-popup-blocking")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--disable-infobars")
-            chrome_options.add_argument("--disable-notifications")
-            chrome_options.add_argument("--window-size=1920,1080")
-            chrome_options.add_argument("--start-maximized")
-            chrome_options.add_argument("--headless=new")
-            chrome_options.add_argument("--remote-debugging-port=9222")
-            chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
-            
-            driver = webdriver.Chrome(options=chrome_options)
-            if driver is None:
-                logger.error("Failed to initialize Chrome driver")
-                return jsonify({"status": "error", "message": "Failed to initialize Chrome driver"}), 500
+        # Close existing driver if running
+        if driver:
+            try:
+                driver.quit()
+            except:
+                pass
+            driver = None
         
-        # Navigate to WhatsApp Web to get QR code
+        # Simple Chrome options that work
+        chrome_options = Options()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1200,800")
+        chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
+        
+        # Only use headless if we can display the QR code somehow
+        # For now, we'll just create the session and save it
+        
+        driver = webdriver.Chrome(options=chrome_options)
         driver.get("https://web.whatsapp.com")
-        time.sleep(5)  # Wait for QR code to load
         
-        # Take screenshot of the page
-        screenshot_path = "/tmp/whatsapp_qr.png"
-        driver.save_screenshot(screenshot_path)
+        # Wait a moment for QR code to load
+        time.sleep(3)
         
-        # Return success message with instructions
+        # Save the session by keeping the profile
+        # The profile is automatically saved to /tmp/chrome-profile
+        
         return jsonify({
-            "status": "success", 
-            "message": "QR code generated. Please access the container to scan it.",
-            "instructions": "Since Render free tier doesn't allow shell access, you'll need to upgrade to a paid plan or use a different method to scan the QR code."
+            "status": "success",
+            "message": "Session created. Profile saved to /tmp/chrome-profile",
+            "instructions": "For Docker: docker exec -it whatsapp-worker python -c \"from worker import driver; driver.get('https://web.whatsapp.com'); input('Press Enter after scanning...'); driver.quit()\""
         }), 200
+        
     except Exception as e:
         logger.error(f"Error generating QR code: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
