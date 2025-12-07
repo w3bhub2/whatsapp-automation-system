@@ -17,7 +17,7 @@ def create_render_blueprint():
                 "type": "web",
                 "name": "whatsapp-worker",
                 "env": "docker",
-                "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",  # Replace with your repo
+                "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
                 "region": "oregon",
                 "plan": "free",
                 "envVars": [
@@ -28,30 +28,20 @@ def create_render_blueprint():
                     {"key": "ADMIN_TELEGRAM_ID", "sync": False},
                     {"key": "UPTIME_PING_SECRET", "sync": False}
                 ],
-                "healthCheckPath": "/health",
-                "disk": {
-                    "name": "chrome-profile",
-                    "mountPath": "/chrome-profile",
-                    "sizeGB": 1
-                }
+                "healthCheckPath": "/health"
             },
             {
                 "type": "web",
                 "name": "n8n",
                 "env": "docker",
-                "repo": "https://github.com/YOUR_USERNAME/whatsapp-automation-system.git",  # Replace with your repo
+                "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
                 "region": "oregon",
                 "plan": "free",
                 "envVars": [
                     {"key": "GENERIC_TIMEZONE", "value": "Asia/Kolkata"},
                     {"key": "TZ", "value": "Asia/Kolkata"}
                 ],
-                "healthCheckPath": "/healthz",
-                "disk": {
-                    "name": "n8n-data",
-                    "mountPath": "/home/node/.n8n",
-                    "sizeGB": 1
-                }
+                "healthCheckPath": "/healthz"
             }
         ]
     }
