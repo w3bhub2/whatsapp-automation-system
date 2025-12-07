@@ -8,6 +8,8 @@ import os
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 def authenticate_whatsapp():
     """Authenticate WhatsApp Web locally"""
@@ -28,9 +30,10 @@ def authenticate_whatsapp():
     chrome_options.add_argument("--window-size=1200,800")
     
     try:
-        # Initialize Chrome driver
-        print("🔧 Initializing Chrome driver...")
-        driver = webdriver.Chrome(options=chrome_options)
+        # Initialize Chrome driver with webdriver-manager
+        print("🔧 Initializing Chrome driver with webdriver-manager...")
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Navigate to WhatsApp Web
         print("🌐 Opening WhatsApp Web...")
@@ -75,7 +78,7 @@ def main():
     print("=" * 50)
     print()
     print("📝 Instructions:")
-    print("1. Make sure ChromeDriver is installed")
+    print("1. Make sure Chrome is installed")
     print("2. Ensure no other Chrome instances are running")
     print("3. Have your phone ready to scan the QR code")
     print()
