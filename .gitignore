@@ -134,6 +134,7 @@ dmypy.json
 # Chrome profile - this should be in .gitignore for security
 chrome-profile/
 n8n_data/
+local-chrome-profile/
 
 # Sample files
 sample_leads.csv

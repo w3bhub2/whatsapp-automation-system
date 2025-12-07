@@ -198,11 +198,11 @@ def init_webdriver():
     chrome_options.add_argument("--disable-background-timer-throttling")
     chrome_options.add_argument("--disable-browser-side-navigation")
     chrome_options.add_argument("--disable-dev-tools")
-    
-    # Additional stability options for Docker
     chrome_options.add_argument("--memory-pressure-off")
     chrome_options.add_argument("--enable-features=NetworkService,NetworkServiceInProcess")
     chrome_options.add_argument("--disable-features=VizDisplayCompositor")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
     
     try:
         driver = webdriver.Chrome(options=chrome_options)
@@ -514,7 +514,26 @@ def get_qr_code():
     try:
         if driver is None:
             logger.info("Initializing Chrome driver for QR code...")
-            driver = init_webdriver()
+            # Use simpler options for QR code generation
+            chrome_options = Options()
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--user-data-dir=/tmp/chrome-profile")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-plugins")
+            chrome_options.add_argument("--disable-images")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-infobars")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--start-maximized")
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
+            
+            driver = webdriver.Chrome(options=chrome_options)
             if driver is None:
                 logger.error("Failed to initialize Chrome driver")
                 return jsonify({"status": "error", "message": "Failed to initialize Chrome driver"}), 500
