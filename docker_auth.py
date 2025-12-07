@@ -25,11 +25,13 @@ def authenticate_whatsapp_docker():
         # Execute authentication command in the container
         print("📱 Executing authentication in Docker container...")
         print("📝 Please scan the QR code with your phone when it appears...")
+        print("⚠️  Note: After scanning, press Ctrl+C to exit (the profile will be saved)")
         
         auth_command = [
             "docker", "exec", "-it", "whatsapp-worker",
             "python", "-c",
             "from selenium import webdriver; from selenium.webdriver.chrome.options import Options; "
+            "import time; "
             "options = Options(); "
             "options.add_argument('--no-sandbox'); "
             "options.add_argument('--disable-dev-shm-usage'); "
@@ -46,14 +48,32 @@ def authenticate_whatsapp_docker():
             "driver = webdriver.Chrome(options=options); "
             "driver.get('https://web.whatsapp.com'); "
             "print('Please scan the QR code with your phone...'); "
-            "input('Press Enter after scanning QR code...'); "
-            "driver.quit()"
+            "print('Keep this window open until authentication is complete.'); "
+            "try: "
+            "    while True: "
+            "        time.sleep(5); "
+            "except KeyboardInterrupt: "
+            "    print('Closing driver...'); "
+            "    driver.quit(); "
+            "    print('Driver closed. Profile saved.');"
         ]
         
         subprocess.run(auth_command)
         
         print("✅ Authentication completed successfully!")
         print("🔒 Profile saved in Docker container at /tmp/chrome-profile/")
+        
+        # Try to copy the profile to host for backup
+        try:
+            print("💾 Attempting to copy profile to host for backup...")
+            subprocess.run([
+                "docker", "cp", 
+                "whatsapp-worker:/tmp/chrome-profile", 
+                "./docker-chrome-profile"
+            ], check=True)
+            print("✅ Profile copied to ./docker-chrome-profile/ for backup")
+        except:
+            print("⚠️  Could not copy profile to host, but it's saved in the container")
         
         return True
         
@@ -98,6 +118,7 @@ def main():
     print("1. Make sure Docker Desktop is running")
     print("2. Have your phone ready to scan the QR code")
     print("3. The authenticated profile will be saved in the Docker container")
+    print("4. After scanning, press Ctrl+C to exit")
     print()
     
     # Test containers first
