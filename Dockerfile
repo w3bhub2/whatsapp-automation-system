@@ -37,6 +37,7 @@ EXPOSE 8000
 
 # Create entrypoint script
 RUN echo '#!/bin/bash\n\
+set -e\n\
 rm -f /tmp/.X99-lock\n\
 Xvfb :99 -screen 0 1200x800x24 &\n\
 python worker.py\n' > /entrypoint.sh && chmod +x /entrypoint.sh
