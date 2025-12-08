@@ -20,6 +20,7 @@ def create_render_blueprint():
                 "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
                 "region": "oregon",
                 "plan": "free",
+                "dockerfilePath": "Dockerfile",
                 "envVars": [
                     {"key": "TELEGRAM_BOT_TOKEN", "sync": False},
                     {"key": "TELEGRAM_CHANNEL_ID", "sync": False},
@@ -37,6 +38,7 @@ def create_render_blueprint():
                 "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
                 "region": "oregon",
                 "plan": "free",
+                "dockerfilePath": "Dockerfile.n8n",
                 "envVars": [
                     {"key": "GENERIC_TIMEZONE", "value": "Asia/Kolkata"},
                     {"key": "TZ", "value": "Asia/Kolkata"},
@@ -50,8 +52,7 @@ def create_render_blueprint():
                     {"key": "ADMIN_TELEGRAM_ID", "sync": False},
                     {"key": "WHATSAPP_WORKER_ENDPOINT", "value": "https://whatsapp-worker-w53e.onrender.com"}
                 ],
-                "healthCheckPath": "/healthz",
-                "dockerCommand": "n8n"
+                "healthCheckPath": "/healthz"
             }
         ]
     }
