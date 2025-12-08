@@ -13,7 +13,7 @@ WhatsApp marketing system with n8n orchestration, WhatsApp Web automation, and S
 
 ## How It Works
 
-1. **One-Time Setup**: Scan WhatsApp QR code for authentication
+1. **One-Time Setup**: Authenticate by messaging WebHub on WhatsApp
 2. **CSV Upload**: Send a CSV file to your Telegram channel
 3. **Automatic Processing**: n8n cron job checks Telegram every 10 minutes
 4. **WhatsApp Sending**: Messages sent with anti-flagging measures
@@ -57,7 +57,7 @@ All variables are automatically loaded from `.env` file:
 - Supabase integration for data storage
 - Safety mechanisms (daily caps, time windows, warm-up)
 - Reply detection system
-- QR code generation for authentication
+- Authentication via WebHub WhatsApp messaging
 
 ### n8n Workflow (`whatsapp_campaign.json`)
 - CSV processing from Telegram
@@ -85,7 +85,7 @@ All variables are automatically loaded from `.env` file:
 
 ## Safety Features
 
-- **Time Window**: Only sends 10:00-18:00 IST
+- **Time Window**: Only sends 9:00-18:00 IST
 - **Daily Cap**: Maximum 600 messages per day
 - **Warm-up Schedule**: Gradually increases daily limit
 - **Random Delays**: 8-12 seconds between messages
