@@ -8,6 +8,7 @@
       "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
       "region": "oregon",
       "plan": "free",
+      "dockerfilePath": "Dockerfile",
       "envVars": [
         {
           "key": "TELEGRAM_BOT_TOKEN",
@@ -43,6 +44,7 @@
       "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
       "region": "oregon",
       "plan": "free",
+      "dockerfilePath": "Dockerfile.n8n",
       "envVars": [
         {
           "key": "GENERIC_TIMEZONE",
@@ -89,8 +91,7 @@
           "value": "https://whatsapp-worker-w53e.onrender.com"
         }
       ],
-      "healthCheckPath": "/healthz",
-      "dockerCommand": "n8n"
+      "healthCheckPath": "/healthz"
     }
   ]
 }
