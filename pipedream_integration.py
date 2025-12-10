@@ -24,6 +24,88 @@ os.makedirs(CSV_UPLOAD_FOLDER, exist_ok=True)
 # Get WhatsApp worker endpoint from environment or default to localhost
 WHATSAPP_WORKER_ENDPOINT = os.environ.get('WHATSAPP_WORKER_ENDPOINT', 'http://localhost:8000')
 
+@app.route('/incoming/leads', methods=['POST'])
+def incoming_leads():
+    """Handle incoming leads from Pipedream - compatible with Pipedream's default endpoint"""
+    try:
+        print("📥 Received leads from Pipedream at /incoming/leads")
+        
+        # Get the JSON payload
+        if request.is_json:
+            data = request.get_json()
+            print(f"   Payload: {json.dumps(data, indent=2)[:200]}...")
+        else:
+            # Handle form data or raw data
+            data = request.get_data(as_text=True)
+            print(f"   Raw data: {data[:200]}...")
+        
+        # Extract CSV content
+        csv_content = None
+        filename = None
+        
+        # Try different ways to extract CSV data
+        if isinstance(data, dict):
+            # If it's JSON, look for CSV content
+            if 'csv' in data:
+                csv_content = data['csv']
+                filename = data.get('filename', f'pipedream_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
+            elif 'content' in data:
+                csv_content = data['content']
+                filename = data.get('filename', f'pipedream_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
+            elif 'file' in data:
+                csv_content = data['file']
+                filename = data.get('filename', f'pipedream_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
+            else:
+                # Assume the entire payload is CSV content
+                csv_content = json.dumps(data)
+                filename = f'pipedream_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        else:
+            # If it's raw data, treat as CSV content
+            csv_content = data
+            filename = f'pipedream_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        # Secure the filename
+        filename = secure_filename(filename)
+        if not filename.endswith('.csv'):
+            filename += '.csv'
+        
+        # Save CSV file
+        filepath = os.path.join(CSV_UPLOAD_FOLDER, filename)
+        
+        # If content is base64 encoded, decode it
+        if isinstance(csv_content, str) and csv_content.startswith('data:text/csv;base64,'):
+            # Extract base64 part
+            base64_data = csv_content.split(',')[1]
+            csv_binary = base64.b64decode(base64_data)
+            with open(filepath, 'wb') as f:
+                f.write(csv_binary)
+        elif isinstance(csv_content, str):
+            # Write as text
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(csv_content)
+        else:
+            # Write as binary
+            with open(filepath, 'wb') as f:
+                f.write(csv_content)
+        
+        print(f"✅ CSV file saved: {filepath}")
+        
+        # Process the CSV file immediately
+        process_csv_file(filepath)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Leads received and processed: {filename}",
+            "filename": filename
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error processing incoming leads: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
 @app.route('/pipedream/webhook', methods=['POST'])
 def receive_csv_from_pipedream():
     """Receive CSV data directly from Pipedream webhook"""
@@ -164,6 +246,7 @@ if __name__ == '__main__':
     
     print("🚀 Starting Pipedream Integration Server...")
     print(f"   Endpoint: http://localhost:{port}/pipedream/webhook")
+    print(f"   Alternative Endpoint: http://localhost:{port}/incoming/leads")
     print(f"   Health check: http://localhost:{port}/health")
     print(f"   WhatsApp Worker Endpoint: {WHATSAPP_WORKER_ENDPOINT}")
     app.run(host='0.0.0.0', port=port, debug=False)
