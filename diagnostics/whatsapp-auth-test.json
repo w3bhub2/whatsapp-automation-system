@@ -1,0 +1,54 @@
+{
+  "timestamp": "2025-12-09T08:58:52.419936",
+  "environment_check": {
+    "missing_variables": [],
+    "available_variables": [
+      "SUPABASE_URL",
+      "SUPABASE_KEY",
+      "TELEGRAM_BOT_TOKEN",
+      "ADMIN_TELEGRAM_ID"
+    ]
+  },
+  "worker_health": {
+    "healthy": true,
+    "response": "{\"status\":\"healthy\"}\n",
+    "status_code": 200
+  },
+  "auth_status": {
+    "checked": true,
+    "data": {
+      "authenticated": false,
+      "message": "Driver not initialized"
+    }
+  },
+  "driver_start": {
+    "started": false,
+    "result": {
+      "error": "HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=30)"
+    }
+  },
+  "supabase_connection": {
+    "connected": true,
+    "result": {
+      "status": "connected",
+      "record_count": 1
+    }
+  },
+  "telegram_bot": {
+    "working": true,
+    "result": {
+      "ok": true,
+      "result": {
+        "id": 8533081100,
+        "is_bot": true,
+        "first_name": "SRAPPER",
+        "username": "SCR4PER_bot",
+        "can_join_groups": true,
+        "can_read_all_group_messages": false,
+        "supports_inline_queries": false,
+        "can_connect_to_business": false,
+        "has_main_web_app": false
+      }
+    }
+  }
+}

@@ -47,7 +47,6 @@ All variables are automatically loaded from `.env` file:
 - `SUPABASE_URL` - Your Supabase project URL
 - `SUPABASE_KEY` - Your Supabase service key
 - `ADMIN_TELEGRAM_ID` - Your admin Telegram ID
-- `UPTIME_PING_SECRET` - BetterStack uptime ping secret (optional)
 
 ## System Components
 

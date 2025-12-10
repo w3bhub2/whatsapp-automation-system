@@ -177,6 +177,10 @@ class WhatsAppManager:
                 bot_info = response.json()
                 if bot_info.get("ok"):
                     print(f"✅ Bot connected: @{bot_info['result']['username']} ({bot_info['result']['first_name']})")
+                    # Check if bot can read all messages
+                    if not bot_info['result'].get('can_read_all_group_messages', False):
+                        print("⚠️  Bot cannot read all channel messages (Telegram privacy restriction)")
+                        print("💡 Solution: Upload today's CSV file manually or re-add bot to channel")
                 else:
                     print("❌ Bot authentication failed")
                     return False
@@ -188,8 +192,7 @@ class WhatsAppManager:
             print("📥 Getting recent messages from channel...")
             url = f"https://api.telegram.org/bot{self.telegram_bot_token}/getUpdates"
             params = {
-                "offset": -1,  # Get latest updates
-                "limit": 20,   # Get last 20 messages
+                "limit": 50,   # Get more messages
                 "timeout": 30
             }
             
@@ -208,6 +211,8 @@ class WhatsAppManager:
             
             if not messages:
                 print("⚠️  No messages found in the channel")
+                print("💡 Since you mentioned there are files in the channel, this is likely due to Telegram privacy restrictions")
+                print("💡 Please upload today's CSV file manually to this directory")
                 return False
             
             print(f"📬 Found {len(messages)} recent messages")
@@ -243,6 +248,8 @@ class WhatsAppManager:
             
             if not csv_files:
                 print("⚠️  No CSV files found for today")
+                print("💡 Since you mentioned there are files in the channel, this is likely due to Telegram privacy restrictions")
+                print("💡 Please upload today's CSV file manually to this directory")
                 return False
             
             print(f"\n🎉 Found {len(csv_files)} CSV file(s) for today!")
@@ -424,10 +431,11 @@ class WhatsAppManager:
             workflow_data = json.load(f)
         
         # Import the workflow
-        url = 'http://localhost:5678/workflows'
+        url = 'http://localhost:5678/api/v1/workflows'
         headers = {
             'accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-N8N-API-KEY': 'supersecretkey'
         }
         
         try:
@@ -441,7 +449,6 @@ class WhatsAppManager:
         except requests.exceptions.RequestException as e:
             print(f"❌ Error importing workflow: {e}")
             return False
-
     # SYSTEM HEALTH FUNCTIONS
     def check_system_health(self):
         """Check health of all system components"""

@@ -43,7 +43,6 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 ADMIN_TELEGRAM_ID = os.environ.get('ADMIN_TELEGRAM_ID')
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-UPTIME_PING_SECRET = os.environ.get('UPTIME_PING_SECRET')
 
 # Global state
 STOP_SENDING = False
@@ -52,7 +51,6 @@ START_DATE = datetime.now().date()
 SEND_LOCK = Lock()
 FAILURE_COUNT = 0
 BLOCK_COUNT = 0
-UPTIME_PING_THREAD = None
 
 # Global variables for WebDriver and reply detection
 driver = None
@@ -187,21 +185,32 @@ def get_supabase_record(phone):
 def init_webdriver():
     """Initialize Chrome WebDriver with proper options for Docker environment"""
     try:
+        logger.info("Initializing Chrome WebDriver...")
         chrome_options = Options()
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--headless=new")
+        # TEMPORARILY DISABLE HEADLESS MODE FOR AUTHENTICATION
+        # chrome_options.add_argument("--headless=new")
         
         # Additional options for stability
         chrome_options.add_argument("--disable-background-timer-throttling")
         chrome_options.add_argument("--disable-renderer-backgrounding")
         chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         
+        # Set user agent to mimic a real browser
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+        
+        # Set window size
+        chrome_options.add_argument("--window-size=1920,1080")
+        
+        logger.info("Creating Chrome WebDriver instance...")
         driver = webdriver.Chrome(options=chrome_options)
+        logger.info("Chrome WebDriver initialized successfully")
         return driver
     except Exception as e:
-        logger.error(f"Failed to initialize Chrome driver: {e}")
+        logger.error(f"Failed to initialize Chrome driver: {str(e)}")
+        logger.exception(e)
         return None
 
 def get_driver():
@@ -219,14 +228,14 @@ def get_driver():
         else:
             # Check if driver is still alive
             try:
-                driver.current_url  # This will throw an exception if driver is dead
-                logger.debug("Using existing Chrome driver")
-            except:
-                logger.info("Reinitializing Chrome driver...")
+                current_url = driver.current_url  # This will throw an exception if driver is dead
+                logger.debug(f"Using existing Chrome driver. Current URL: {current_url}")
+            except Exception as e:
+                logger.warning(f"Chrome driver appears to be dead: {str(e)}. Reinitializing...")
                 try:
                     driver.quit()
-                except:
-                    pass
+                except Exception as quit_e:
+                    logger.warning(f"Error quitting dead driver: {str(quit_e)}")
                 driver = init_webdriver()
                 if driver is None:
                     logger.error("Failed to reinitialize Chrome driver")
@@ -267,17 +276,24 @@ def send_whatsapp_message(phone, message):
         # Open WhatsApp Web with the phone number
         encoded_message = urllib.parse.quote(message)
         url = f"https://web.whatsapp.com/send?phone={phone}&text={encoded_message}"
+        logger.info(f"Navigating to WhatsApp Web URL: {url}")
         driver.get(url)
         
         # Human-like waiting with random variations
-        time.sleep(random.uniform(3, 6))
+        wait_time = random.uniform(3, 6)
+        logger.info(f"Waiting {wait_time:.2f} seconds for page to load...")
+        time.sleep(wait_time)
         
         # Wait for the message input field to be ready
+        logger.info("Waiting for message input field to be ready...")
         wait = WebDriverWait(driver, 30)
         message_box = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@contenteditable="true"][@data-tab="10"]')))
+        logger.info("Message input field is ready")
         
         # Simulate human typing behavior
-        time.sleep(random.uniform(1, 3))
+        typing_delay = random.uniform(1, 3)
+        logger.info(f"Simulating human typing behavior with {typing_delay:.2f} seconds delay...")
+        time.sleep(typing_delay)
         
         # Check for limit/suspicious activity alerts
         try:
@@ -291,12 +307,16 @@ def send_whatsapp_message(phone, message):
             pass
         
         # Simulate typing with random delays
+        logger.info("Sending message...")
         for char in "\n":  # Just press enter to send pre-filled message
-            time.sleep(random.uniform(0.1, 0.3))
+            key_delay = random.uniform(0.1, 0.3)
+            time.sleep(key_delay)
             message_box.send_keys(char)
         
         # Wait for confirmation that message was sent
+        logger.info("Waiting for message confirmation...")
         wait.until(EC.presence_of_element_located((By.XPATH, '//span[@data-icon="msg-time" or @data-icon="check"]')))
+        logger.info("Message confirmation received")
         
         # Update daily count
         with SEND_LOCK:
@@ -305,12 +325,17 @@ def send_whatsapp_message(phone, message):
         logger.info(f"Message sent successfully to {phone}")
         return "success"
         
-    except TimeoutException:
-        logger.error(f"Timeout while sending message to {phone}")
+    except TimeoutException as te:
+        logger.error(f"Timeout while sending message to {phone}: {str(te)}")
         FAILURE_COUNT += 1
         return "timeout"
+    except NoSuchElementException as nse:
+        logger.error(f"Element not found while sending message to {phone}: {str(nse)}")
+        FAILURE_COUNT += 1
+        return "element_not_found"
     except Exception as e:
-        logger.error(f"Error sending message to {phone}: {e}")
+        logger.error(f"Error sending message to {phone}: {str(e)}")
+        logger.exception(e)  # Log full traceback
         FAILURE_COUNT += 1
         return "error"
 
@@ -333,24 +358,30 @@ def detect_replies():
                 # Navigate to WhatsApp Web if not already there
                 try:
                     if driver.current_url != "https://web.whatsapp.com":
+                        logger.info("Navigating to WhatsApp Web for reply detection...")
                         driver.get("https://web.whatsapp.com")
                         time.sleep(5)  # Wait for page to load
-                except:
+                except Exception as e:
                     # If we can't navigate, try to recover
+                    logger.warning(f"Failed to navigate to WhatsApp Web: {str(e)}. Retrying...")
                     try:
                         driver.get("https://web.whatsapp.com")
                         time.sleep(5)
-                    except Exception as e:
-                        logger.error(f"Failed to navigate to WhatsApp Web: {e}")
+                    except Exception as e2:
+                        logger.error(f"Failed to navigate to WhatsApp Web after retry: {str(e2)}")
                         time.sleep(60)  # Wait longer before retrying
                         continue
             
             # Check for new messages
+            logger.info("Checking for unread messages...")
             unread_chats = driver.find_elements(By.XPATH, '//div[@role="row"]//span[@aria-label="Unread"]')
+            logger.info(f"Found {len(unread_chats)} unread chats")
+            
             for chat in unread_chats:
                 try:
                     # Click on the chat to open it
                     parent_chat = chat.find_element(By.XPATH, './ancestor::div[@role="row"]')
+                    logger.info("Opening chat to check for replies...")
                     parent_chat.click()
                     time.sleep(2)
                     
@@ -358,7 +389,8 @@ def detect_replies():
                     try:
                         chat_header = driver.find_element(By.XPATH, '//div[@id="main"]//header//div[@data-testid="conversation-info-header"]')
                         chat_name = chat_header.text.split('\n')[0]
-                    except:
+                    except Exception as e:
+                        logger.warning(f"Could not extract chat name: {str(e)}")
                         chat_name = "Unknown"
                     
                     # Extract messages
@@ -373,13 +405,16 @@ def detect_replies():
                         # Send notification to admin
                         send_telegram_message(ADMIN_TELEGRAM_ID, f"📩 New reply from {chat_name}: {last_message}")
                 except Exception as e:
-                    logger.error(f"Error processing chat: {e}")
+                    logger.error(f"Error processing chat: {str(e)}")
+                    logger.exception(e)
                     continue
             
             # Wait before next check
+            logger.info("Reply detection cycle completed. Waiting 30 seconds before next check...")
             time.sleep(30)  # Check every 30 seconds
         except Exception as e:
-            logger.error(f"Error in reply detection loop: {e}")
+            logger.error(f"Error in reply detection loop: {str(e)}")
+            logger.exception(e)
             time.sleep(30)  # Continue checking even if there's an error
 
 @app.route('/health', methods=['GET'])
@@ -432,6 +467,48 @@ def send_message():
         logger.error(f"Error in send_message endpoint: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/send-test', methods=['POST'])
+def send_test_message():
+    """Send a test WhatsApp message bypassing time restrictions for testing"""
+    global DAILY_SENT_COUNT, FAILURE_COUNT, BLOCK_COUNT, STOP_SENDING
+    
+    # Check if we should stop sending
+    if STOP_SENDING:
+        return jsonify({"error": "Sending stopped due to safety triggers"}), 429
+    
+    # Skip time window check for testing
+    # Check daily limit
+    if DAILY_SENT_COUNT >= get_daily_limit():
+        return jsonify({"error": f"Daily limit reached ({get_daily_limit()} messages)"}), 429
+    
+    try:
+        data = request.get_json()
+        phone = data.get('phone')
+        message = data.get('message')
+        batch_id = data.get('batch_id', 'test')
+        
+        if not phone or not message:
+            return jsonify({"error": "Phone and message are required"}), 400
+        
+        # Add random delay between messages
+        delay = random.randint(3, 5)  # Shorter delay for testing
+        logger.info(f"Waiting {delay} seconds before sending test message...")
+        time.sleep(delay)
+        
+        # Send the message
+        result = send_whatsapp_message(phone, message)
+        
+        if result == "success":
+            # Record in Supabase
+            record_sent_number(phone, data.get('business_name', ''), data.get('email', ''), batch_id)
+            return jsonify({"status": "sent", "phone": phone}), 200
+        else:
+            return jsonify({"error": f"Failed to send message: {result}"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error in send_test_message endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/stop', methods=['POST'])
 def stop_sending():
     """Emergency stop endpoint"""
@@ -458,18 +535,376 @@ def start_driver():
             
             # Start reply detection thread
             if not REPLY_DETECTION_ACTIVE:
-                reply_thread = threading.Thread(target=detect_replies, daemon=True)
+                reply_thread = Thread(target=detect_replies, daemon=True)
                 reply_thread.start()
                 REPLY_DETECTION_ACTIVE = True
                 logger.info("Reply detection thread started")
             
-            return jsonify({"status": "success", "message": "Chrome driver started"}), 200
+            # Check if we're already logged in
+            try:
+                # Wait a moment for the page to load
+                time.sleep(5)
+                
+                # Try to find the chat list (indicates we're logged in)
+                chat_list = driver.find_element(By.XPATH, '//div[@role="listbox"]')
+                logger.info("Already logged in to WhatsApp Web")
+                return jsonify({
+                    "status": "success", 
+                    "message": "Chrome driver started and already logged in"
+                }), 200
+            except:
+                # Try to find and save the QR code
+                try:
+                    logger.info("Not logged in to WhatsApp Web. Looking for QR code...")
+                    # Wait for QR code to appear
+                    wait = WebDriverWait(driver, 30)
+                    # Try multiple selectors for QR code (WhatsApp Web sometimes changes UI)
+                    qr_selectors = [
+                        '//canvas[@alt="Scan me!"]',
+                        '//div[@data-ref]//canvas',
+                        '//div[contains(@class, "landing-wrapper")]//div[@data-ref]',
+                        '//div[@role="button"][@class="cm280y3j fsmudhu6 l3k7h4x6 g9p5wyxn iezj4v4j jqgttzxe oy19ykas pdr474jm"]'
+                    ]
+                    
+                    qr_element = None
+                    for selector in qr_selectors:
+                        try:
+                            qr_element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                            if qr_element:
+                                logger.info(f"QR code found with selector: {selector}")
+                                break
+                        except:
+                            continue
+                    
+                    if qr_element is None:
+                        raise TimeoutException("QR code not found with any selector")
+                    
+                    # Save screenshot of the QR code to a location accessible from host
+                    qr_filename = '/app/whatsapp_qr_code.png'
+                    qr_element.screenshot(qr_filename)
+                    logger.info(f"QR code saved to {qr_filename}")
+                    
+                    return jsonify({
+                        "status": "success", 
+                        "message": "Chrome driver started. QR code saved",
+                        "qr_code_file": qr_filename,
+                        "instruction": "Use 'docker cp whatsapp-worker:/app/whatsapp_qr_code.png .' to copy the QR code to your host machine and scan it with your WhatsApp mobile app."
+                    }), 200
+                except TimeoutException:
+                    logger.error("QR code not found")
+                    return jsonify({
+                        "status": "success", 
+                        "message": "Chrome driver started. Could not find QR code.",
+                        "instruction": "Please check the container logs for more information."
+                    }), 200
         else:
             logger.info("Chrome driver already running")
             return jsonify({"status": "success", "message": "Chrome driver already running"}), 200
     except Exception as e:
         logger.error(f"Error starting Chrome driver: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/get-qr', methods=['GET'])
+def get_qr_code():
+    """Get WhatsApp Web QR code for authentication"""
+    global driver
+    
+    if driver is None:
+        return jsonify({"error": "Driver not initialized. Call /start first."}), 400
+    
+    try:
+        # Wait for QR code to appear with improved selectors
+        wait = WebDriverWait(driver, 30)
+        # Try multiple selectors for QR code (WhatsApp Web sometimes changes UI)
+        qr_selectors = [
+            '//canvas[@alt="Scan me!"]',
+            '//div[@data-ref]//canvas',
+            '//div[contains(@class, "landing-wrapper")]//div[@data-ref]',
+            '//div[@role="button"][@class="cm280y3j fsmudhu6 l3k7h4x6 g9p5wyxn iezj4v4j jqgttzxe oy19ykas pdr474jm"]'
+        ]
+        
+        qr_element = None
+        for selector in qr_selectors:
+            try:
+                qr_element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                if qr_element:
+                    logger.info(f"QR code found with selector: {selector}")
+                    break
+            except:
+                continue
+        
+        if qr_element is None:
+            raise TimeoutException("QR code not found with any selector")
+        
+        # Get screenshot of the QR code
+        qr_screenshot = qr_element.screenshot_as_base64
+        
+        return jsonify({
+            "status": "success",
+            "qr_code": qr_screenshot,
+            "message": "Scan this QR code with your WhatsApp mobile app"
+        }), 200
+        
+    except TimeoutException:
+        return jsonify({"error": "QR code not found. Make sure you're not already logged in."}), 404
+    except Exception as e:
+        logger.error(f"Error getting QR code: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/save-qr', methods=['GET'])
+def save_qr_code():
+    """Save WhatsApp Web QR code to a file for authentication"""
+    global driver
+    
+    if driver is None:
+        return jsonify({"error": "Driver not initialized. Call /start first."}), 400
+    
+    try:
+        # Wait for QR code to appear with improved selectors
+        wait = WebDriverWait(driver, 30)
+        # Try multiple selectors for QR code (WhatsApp Web sometimes changes UI)
+        qr_selectors = [
+            '//canvas[@alt="Scan me!"]',
+            '//div[@data-ref]//canvas',
+            '//div[contains(@class, "landing-wrapper")]//div[@data-ref]',
+            '//div[@role="button"][@class="cm280y3j fsmudhu6 l3k7h4x6 g9p5wyxn iezj4v4j jqgttzxe oy19ykas pdr474jm"]'
+        ]
+        
+        qr_element = None
+        for selector in qr_selectors:
+            try:
+                qr_element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                if qr_element:
+                    logger.info(f"QR code found with selector: {selector}")
+                    break
+            except:
+                continue
+        
+        if qr_element is None:
+            raise TimeoutException("QR code not found with any selector")
+        
+        # Save screenshot of the QR code
+        qr_element.screenshot('/app/qr_code.png')
+        
+        return jsonify({
+            "status": "success",
+            "message": "QR code saved to /app/qr_code.png",
+            "instruction": "Copy this file from the container to your host machine to scan it"
+        }), 200
+        
+    except TimeoutException:
+        return jsonify({"error": "QR code not found. Make sure you're not already logged in."}), 404
+    except Exception as e:
+        logger.error(f"Error saving QR code: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/process-csv', methods=['POST'])
+def process_csv_manually():
+    """Process CSV file manually bypassing Telegram restrictions and send messages"""
+    try:
+        # Get the filename from the request
+        data = request.get_json()
+        filename = data.get('filename')
+        batch_id = data.get('batch_id', 'manual_batch_' + datetime.now().strftime("%Y%m%d_%H%M%S"))
+        
+        if not filename:
+            return jsonify({"error": "Filename is required"}), 400
+        
+        # Check if file exists
+        if not os.path.exists(filename):
+            return jsonify({"error": f"File {filename} not found"}), 404
+        
+        # Check if within send window
+        if not is_within_send_window():
+            return jsonify({"error": "Outside send window (9 AM - 6 PM IST)"}), 429
+        
+        # Check daily limit
+        global DAILY_SENT_COUNT
+        daily_limit = get_daily_limit()
+        if DAILY_SENT_COUNT >= daily_limit:
+            return jsonify({"error": f"Daily limit reached ({daily_limit} messages)"}), 429
+        
+        # Process the CSV file
+        sent_count = 0
+        failed_count = 0
+        
+        with open(filename, 'r', encoding='utf-8') as f:
+            # Skip header
+            header = f.readline().strip()
+            if header != "phone,business_name,email":
+                return jsonify({"error": "Invalid CSV format. Expected header: phone,business_name,email"}), 400
+            
+            # Process each line
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                parts = line.split(',')
+                if len(parts) != 3:
+                    continue
+                    
+                phone, business_name, email = parts
+                
+                # Validate phone number (should be numeric and 10-15 digits)
+                if not phone.isdigit() or len(phone) < 10 or len(phone) > 15:
+                    failed_count += 1
+                    continue
+                
+                # Check if we've reached the daily limit
+                if DAILY_SENT_COUNT >= daily_limit:
+                    break
+                
+                # Send message
+                try:
+                    # Select a random template
+                    message_template = random.choice(INITIAL_TEMPLATES)
+                    message = message_template.format(name=business_name)
+                    
+                    # Send the message
+                    result = send_whatsapp_message(phone, message)
+                    
+                    if result == "success":
+                        # Record in Supabase
+                        record_sent_number(phone, business_name, email, batch_id)
+                        sent_count += 1
+                    else:
+                        failed_count += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error sending message to {phone}: {e}")
+                    failed_count += 1
+        
+        return jsonify({
+            "status": "completed",
+            "message": f"Processing completed for {filename}",
+            "filename": filename,
+            "sent_count": sent_count,
+            "failed_count": failed_count,
+            "daily_sent_count": DAILY_SENT_COUNT
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing CSV: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/process-csv-test', methods=['POST'])
+def process_csv_manually_test():
+    """Process CSV file manually bypassing Telegram and time window restrictions for testing"""
+    try:
+        # Get the filename from the request
+        data = request.get_json()
+        filename = data.get('filename')
+        batch_id = data.get('batch_id', 'test_batch_' + datetime.now().strftime("%Y%m%d_%H%M%S"))
+        
+        if not filename:
+            return jsonify({"error": "Filename is required"}), 400
+        
+        # Check if file exists
+        if not os.path.exists(filename):
+            return jsonify({"error": f"File {filename} not found"}), 404
+        
+        # SKIP time window check for testing
+        # SKIP daily limit check for testing
+        
+        # Process the CSV file
+        sent_count = 0
+        failed_count = 0
+        
+        with open(filename, 'r', encoding='utf-8') as f:
+            # Skip header
+            header = f.readline().strip()
+            if header != "phone,business_name,email":
+                return jsonify({"error": "Invalid CSV format. Expected header: phone,business_name,email"}), 400
+            
+            # Process each line
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                parts = line.split(',')
+                if len(parts) != 3:
+                    continue
+                    
+                phone, business_name, email = parts
+                
+                # Validate phone number (should be numeric and 10-15 digits)
+                if not phone.isdigit() or len(phone) < 10 or len(phone) > 15:
+                    failed_count += 1
+                    continue
+                
+                # Send message
+                try:
+                    # Select a random template
+                    message_template = random.choice(INITIAL_TEMPLATES)
+                    message = message_template.format(name=business_name)
+                    
+                    # Send the message
+                    result = send_whatsapp_message(phone, message)
+                    
+                    if result == "success":
+                        # Record in Supabase
+                        record_sent_number(phone, business_name, email, batch_id)
+                        sent_count += 1
+                    else:
+                        failed_count += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error sending message to {phone}: {e}")
+                    failed_count += 1
+        
+        return jsonify({
+            "status": "completed",
+            "message": f"Processing completed for {filename}",
+            "filename": filename,
+            "sent_count": sent_count,
+            "failed_count": failed_count,
+            "daily_sent_count": DAILY_SENT_COUNT
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing CSV: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/check-auth', methods=['GET'])
+def check_authentication():
+    """Check if WhatsApp Web is authenticated"""
+    global driver
+    
+    if driver is None:
+        return jsonify({"authenticated": False, "message": "Driver not initialized"}), 200
+    
+    try:
+        # Check if we're logged in by looking for the chat list
+        chat_list = driver.find_element(By.XPATH, '//div[@role="listbox"]')
+        return jsonify({"authenticated": True, "message": "WhatsApp Web is authenticated"}), 200
+    except:
+        # Not logged in, check if QR code is visible
+        try:
+            # Try multiple selectors for QR code (WhatsApp Web sometimes changes UI)
+            qr_selectors = [
+                '//canvas[@alt="Scan me!"]',
+                '//div[@data-ref]//canvas',
+                '//div[contains(@class, "landing-wrapper")]//div[@data-ref]'
+            ]
+            
+            qr_found = False
+            for selector in qr_selectors:
+                try:
+                    qr_element = driver.find_element(By.XPATH, selector)
+                    if qr_element:
+                        qr_found = True
+                        break
+                except:
+                    continue
+            
+            if qr_found:
+                return jsonify({"authenticated": False, "message": "Not authenticated. QR code is visible."}), 200
+            else:
+                return jsonify({"authenticated": False, "message": "Not authenticated. QR code not found."}), 200
+        except:
+            return jsonify({"authenticated": False, "message": "Not authenticated. QR code not found."}), 200
 
 # Authentication
 # Due to WhatsApp Web security restrictions, authentication must be performed by messaging WebHub on WhatsApp
@@ -546,8 +981,8 @@ if __name__ == '__main__':
     # Initialize Supabase tables
     init_supabase_tables()
     
-    # Start uptime ping thread
-    send_uptime_ping()
+    # Use Render's PORT environment variable, default to 8000
+    port = int(os.environ.get('PORT', 8000))
     
     # Start Flask app (reply detection will be started on demand)
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)

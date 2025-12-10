@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-12-10T16:47:51.404235",
+  "results": {
+    "git_status": {
+      "stdout": "On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges not staged for commit:\n  (use \"git add/rm <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tdeleted:    DEPLOYMENT_INSTRUCTIONS.md\n\tmodified:   Dockerfile\n\tdeleted:    Dockerfile.n8n\n\tdeleted:    STATUS_REPORT.md\n\tdeleted:    deploy_to_render.py\n\tmodified:   docker-compose.yml\n\tdeleted:    init_supabase_tables.sql\n\tmodified:   render.yaml\n\tdeleted:    supabase_schema.sql\n\tdeleted:    test_render_system.py\n\tmodified:   whatsapp_manager.py\n\tmodified:   worker.py\n\nUntracked files:\n  (use \"git add <file>...\" to include in what will be committed)\n\t.env.template\n\tDockerfile.pipedream\n\tRUNBOOK.md\n\tcsv-validator.py\n\tdiagnostics/\n\thealth-check.py\n\tpipedream_integration.py\n\tscripts/\n\tsecrets-audit.py\n\ttest_whatsapp_auth.py\n\ttools/\n\twhatsapp-auth-test.py\n\twhatsapp_auth_helper.py\n\twhatsapp_qr_code.png\n\twhatsapp_qr_current.png\n\twhatsapp_qr_from_container.png\n\nno changes added to commit (use \"git add\" and/or \"git commit -a\")\n",
+      "stderr": "",
+      "returncode": 0
+    },
+    "build": {
+      "stdout": "Collecting flask==2.3.3 (from -r requirements.txt (line 1))\n  Using cached flask-2.3.3-py3-none-any.whl.metadata (3.6 kB)\nCollecting selenium==4.15.0 (from -r requirements.txt (line 2))\n  Using cached selenium-4.15.0-py3-none-any.whl.metadata (6.9 kB)\nRequirement already satisfied: requests==2.31.0 in c:\\python311\\lib\\site-packages (from -r requirements.txt (line 3)) (2.31.0)\nRequirement already satisfied: python-dotenv==1.0.0 in c:\\python311\\lib\\site-packages (from -r requirements.txt (line 4)) (1.0.0)\nRequirement already satisfied: webdriver-manager==4.0.2 in c:\\python311\\lib\\site-packages (from -r requirements.txt (line 5)) (4.0.2)\nRequirement already satisfied: Werkzeug>=2.3.7 in c:\\python311\\lib\\site-packages (from flask==2.3.3->-r requirements.txt (line 1)) (3.1.3)\nRequirement already satisfied: Jinja2>=3.1.2 in c:\\python311\\lib\\site-packages (from flask==2.3.3->-r requirements.txt (line 1)) (3.1.6)\nRequirement already satisfied: itsdangerous>=2.1.2 in c:\\python311\\lib\\site-packages (from flask==2.3.3->-r requirements.txt (line 1)) (2.2.0)\nRequirement already satisfied: click>=8.1.3 in c:\\python311\\lib\\site-packages (from flask==2.3.3->-r requirements.txt (line 1)) (8.1.8)\nRequirement already satisfied: blinker>=1.6.2 in c:\\python311\\lib\\site-packages (from flask==2.3.3->-r requirements.txt (line 1)) (1.9.0)\nRequirement already satisfied: urllib3<3,>=1.26 in c:\\python311\\lib\\site-packages (from urllib3[socks]<3,>=1.26->selenium==4.15.0->-r requirements.txt (line 2)) (2.5.0)\nRequirement already satisfied: trio~=0.17 in c:\\python311\\lib\\site-packages (from selenium==4.15.0->-r requirements.txt (line 2)) (0.31.0)\nRequirement already satisfied: trio-websocket~=0.9 in c:\\python311\\lib\\site-packages (from selenium==4.15.0->-r requirements.txt (line 2)) (0.12.2)\nRequirement already satisfied: certifi>=2021.10.8 in c:\\python311\\lib\\site-packages (from selenium==4.15.0->-r requirements.txt (line 2)) (2025.10.5)\nRequirement already satisfied: charset-normalizer<4,>=2 in c:\\python311\\lib\\site-packages (from requests==2.31.0->-r requirements.txt (line 3)) (3.4.3)\nRequirement already satisfied: idna<4,>=2.5 in c:\\python311\\lib\\site-packages (from requests==2.31.0->-r requirements.txt (line 3)) (3.10)\nRequirement already satisfied: packaging in c:\\python311\\lib\\site-packages (from webdriver-manager==4.0.2->-r requirements.txt (line 5)) (25.0)\nRequirement already satisfied: colorama in c:\\python311\\lib\\site-packages (from click>=8.1.3->flask==2.3.3->-r requirements.txt (line 1)) (0.4.6)\nRequirement already satisfied: MarkupSafe>=2.0 in c:\\python311\\lib\\site-packages (from Jinja2>=3.1.2->flask==2.3.3->-r requirements.txt (line 1)) (3.0.3)\nRequirement already satisfied: attrs>=23.2.0 in c:\\python311\\lib\\site-packages (from trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (25.3.0)\nRequirement already satisfied: sortedcontainers in c:\\python311\\lib\\site-packages (from trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (2.4.0)\nRequirement already satisfied: outcome in c:\\python311\\lib\\site-packages (from trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (1.3.0.post0)\nRequirement already satisfied: sniffio>=1.3.0 in c:\\python311\\lib\\site-packages (from trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (1.3.1)\nRequirement already satisfied: cffi>=1.14 in c:\\python311\\lib\\site-packages (from trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (2.0.0)\nRequirement already satisfied: wsproto>=0.14 in c:\\python311\\lib\\site-packages (from trio-websocket~=0.9->selenium==4.15.0->-r requirements.txt (line 2)) (1.2.0)\nRequirement already satisfied: pysocks!=1.5.7,<2.0,>=1.5.6 in c:\\python311\\lib\\site-packages (from urllib3[socks]<3,>=1.26->selenium==4.15.0->-r requirements.txt (line 2)) (1.7.1)\nRequirement already satisfied: pycparser in c:\\python311\\lib\\site-packages (from cffi>=1.14->trio~=0.17->selenium==4.15.0->-r requirements.txt (line 2)) (2.23)\nRequirement already satisfied: h11<1,>=0.9.0 in c:\\python311\\lib\\site-packages (from wsproto>=0.14->trio-websocket~=0.9->selenium==4.15.0->-r requirements.txt (line 2)) (0.14.0)\nUsing cached flask-2.3.3-py3-none-any.whl (96 kB)\nUsing cached selenium-4.15.0-py3-none-any.whl (10.2 MB)\nWould install Flask-2.3.3 selenium-4.15.0\n",
+      "stderr": "\n[notice] A new release of pip is available: 24.0 -> 25.3\n[notice] To update, run: python.exe -m pip install --upgrade pip\n",
+      "returncode": 0
+    },
+    "env_vars": {
+      "missing": [],
+      "present": [
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_CHANNEL_ID",
+        "SUPABASE_URL",
+        "SUPABASE_KEY",
+        "ADMIN_TELEGRAM_ID"
+      ]
+    },
+    "csv_files": [],
+    "whatsapp_auth": true
+  },
+  "deepscore": {
+    "total_score": 77.0,
+    "breakdown": {
+      "code_quality": 7,
+      "build_stability": 10,
+      "secrets_config": 10,
+      "data_handling": 8,
+      "integrations": 7,
+      "documentation": 5,
+      "security": 8,
+      "production_ready": 6
+    }
+  }
+}

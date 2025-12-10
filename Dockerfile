@@ -31,7 +31,7 @@ ENV DISPLAY=:99
 # Copy application code
 COPY worker.py .
 COPY whatsapp_manager.py .
-
+COPY pipedream_integration.py .
 # Expose port
 EXPOSE 8000
 

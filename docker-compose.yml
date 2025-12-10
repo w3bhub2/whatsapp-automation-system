@@ -28,4 +28,20 @@ services:
       - SUPABASE_KEY=${SUPABASE_KEY}
       - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
       - WHATSAPP_WORKER_ENDPOINT=http://whatsapp-worker:8000
-      - UPTIME_PING_SECRET=${UPTIME_PING_SECRET}
+
+  pipedream-integration:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipedream
+    container_name: pipedream-integration
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./pipedream_csv:/app/pipedream_csv
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}

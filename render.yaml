@@ -1,97 +1,58 @@
-{
-  "version": "1",
-  "services": [
-    {
-      "type": "web",
-      "name": "whatsapp-worker",
-      "env": "docker",
-      "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
-      "region": "oregon",
-      "plan": "free",
-      "dockerfilePath": "Dockerfile",
-      "envVars": [
-        {
-          "key": "TELEGRAM_BOT_TOKEN",
-          "sync": false
-        },
-        {
-          "key": "TELEGRAM_CHANNEL_ID",
-          "sync": false
-        },
-        {
-          "key": "SUPABASE_URL",
-          "sync": false
-        },
-        {
-          "key": "SUPABASE_KEY",
-          "sync": false
-        },
-        {
-          "key": "ADMIN_TELEGRAM_ID",
-          "sync": false
-        },
-        {
-          "key": "UPTIME_PING_SECRET",
-          "sync": false
-        }
-      ],
-      "healthCheckPath": "/health"
-    },
-    {
-      "type": "web",
-      "name": "n8n",
-      "env": "docker",
-      "repo": "https://github.com/w3bhub2/whatsapp-automation-system.git",
-      "region": "oregon",
-      "plan": "free",
-      "dockerfilePath": "Dockerfile.n8n",
-      "envVars": [
-        {
-          "key": "GENERIC_TIMEZONE",
-          "value": "Asia/Kolkata"
-        },
-        {
-          "key": "TZ",
-          "value": "Asia/Kolkata"
-        },
-        {
-          "key": "N8N_ENCRYPTION_KEY",
-          "sync": false
-        },
-        {
-          "key": "N8N_USER_MANAGEMENT_DISABLED",
-          "value": "true"
-        },
-        {
-          "key": "N8N_API_KEY",
-          "value": "supersecretkey"
-        },
-        {
-          "key": "TELEGRAM_BOT_TOKEN",
-          "sync": false
-        },
-        {
-          "key": "TELEGRAM_CHANNEL_ID",
-          "sync": false
-        },
-        {
-          "key": "SUPABASE_URL",
-          "sync": false
-        },
-        {
-          "key": "SUPABASE_KEY",
-          "sync": false
-        },
-        {
-          "key": "ADMIN_TELEGRAM_ID",
-          "sync": false
-        },
-        {
-          "key": "WHATSAPP_WORKER_ENDPOINT",
-          "value": "https://whatsapp-worker-w53e.onrender.com"
-        }
-      ],
-      "healthCheckPath": "/healthz"
-    }
-  ]
-}
+services:
+  - type: web
+    name: whatsapp-worker
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python worker.py"
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: web
+    name: pipedream-integration
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python pipedream_integration.py"
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: web
+    name: n8n-workflow
+    env: docker
+    image: n8nio/n8n:latest
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    envVars:
+      - key: GENERIC_TIMEZONE
+        value: Asia/Kolkata
+      - key: TZ
+        value: Asia/Kolkata
+      - key: N8N_ENCRYPTION_KEY
+        sync: false
+      - key: N8N_USER_MANAGEMENT_DISABLED
+        value: "true"
+      - key: N8N_API_KEY
+        value: "supersecretkey"
+    healthCheckPath: /healthz
+    autoDeploy: true
